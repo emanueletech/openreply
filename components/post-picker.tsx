@@ -42,6 +42,7 @@ export default function PostPicker({
   onSelect,
 }: PostPickerProps) {
   const [posts, setPosts] = useState<InstagramPost[]>([]);
+  const [mostrati, setMostrati] = useState(60);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -119,11 +120,17 @@ export default function PostPicker({
     );
   }
 
-  const visible = query.trim()
+  const filtrati = query.trim()
     ? posts.filter((p) =>
         (p.caption ?? "").toLowerCase().includes(query.trim().toLowerCase())
       )
     : posts;
+
+  // Anche col caricamento pigro delle immagini, mettere in pagina centinaia di
+  // riquadri appesantisce il telefono: se ne mostra un blocco per volta, e chi
+  // cerca un post vecchio usa la ricerca per didascalia o preme "Mostra altri".
+  const visible = filtrati.slice(0, mostrati);
+  const altriDaMostrare = filtrati.length - visible.length;
 
   return (
     <div className="space-y-2">
@@ -183,6 +190,13 @@ export default function PostPicker({
               <img
                 src={thumb}
                 alt={post.caption?.slice(0, 50) ?? "Post Instagram"}
+                // La griglia carica l'intera libreria (all=true): su un account
+                // con centinaia di post, scaricarle e decodificarle tutte in una
+                // volta fa esaurire la memoria a Safari su iPhone e la pagina
+                // viene chiusa. Così il browser tira giù solo le miniature che
+                // stanno davvero sullo schermo.
+                loading="lazy"
+                decoding="async"
                 className={`w-full h-full object-cover ${isUsed ? "opacity-75" : ""}`}
               />
             ) : (
@@ -213,6 +227,15 @@ export default function PostPicker({
               );
             })}
           </div>
+          {altriDaMostrare > 0 && (
+            <button
+              type="button"
+              onClick={() => setMostrati((n) => n + 60)}
+              className="w-full rounded-lg border border-border py-2 text-sm text-muted hover:text-foreground"
+            >
+              Mostra altri {Math.min(60, altriDaMostrare)} post
+            </button>
+          )}
         </>
       )}
     </div>
