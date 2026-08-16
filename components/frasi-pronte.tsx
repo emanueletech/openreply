@@ -76,7 +76,7 @@ export function FrasiPronte({
       </div>
 
       {aperto && (
-        <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-2 flex w-full flex-wrap gap-2">
           {frasi.map((frase) => (
             <button
               key={frase}
@@ -86,7 +86,12 @@ export function FrasiPronte({
                 setAperto(false);
               }}
               title={frase}
-              className="max-w-full truncate rounded-full border border-border px-3 py-1 text-xs text-muted hover:border-accent/40 hover:text-foreground"
+              // min-w-0 è indispensabile: in un contenitore flex un elemento
+              // non scende sotto la larghezza del proprio testo, e una frase
+              // lunga allargherebbe l'intera pagina costringendo a scorrere
+              // di lato sul telefono. Con questo il testo viene troncato e
+              // resta dentro lo schermo.
+              className="min-w-0 max-w-full shrink truncate rounded-full border border-border px-3 py-1 text-left text-xs text-muted hover:border-accent/40 hover:text-foreground"
             >
               {frase}
             </button>
