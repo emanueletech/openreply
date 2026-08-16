@@ -43,7 +43,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="it" className="h-full dark">
-      <body className="min-h-full bg-background text-foreground font-sans antialiased">
+      <body
+        className="min-h-full bg-background text-foreground font-sans antialiased"
+        // lascia respiro alla barra di sistema in fondo all'iPhone (la lineetta
+        // per tornare alla Home); sul desktop vale 0 e non cambia nulla
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
         {children}
         <Analytics />
       </body>

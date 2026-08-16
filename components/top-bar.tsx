@@ -34,7 +34,17 @@ export default function TopBar({
   const title = pageTitles[pathname] ?? "Dashboard";
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 h-16 px-4 lg:px-8 border-b border-border bg-background">
+    // Installata sulla schermata Home dell'iPhone, l'app occupa tutto lo
+    // schermo: senza questo spazio in cima, il titolo finisce sotto l'orologio
+    // e la batteria. env(safe-area-inset-top) vale 0 sul desktop e nel browser,
+    // quindi lì non cambia nulla.
+    <header
+      className="sticky top-0 z-30 flex items-center justify-between gap-3 px-4 lg:px-8 border-b border-border bg-background"
+      style={{
+        height: "calc(4rem + env(safe-area-inset-top))",
+        paddingTop: "env(safe-area-inset-top)",
+      }}
+    >
       <div className="flex min-w-0 items-center gap-3 sm:gap-4">
         <button
           onClick={onMenuClick}
