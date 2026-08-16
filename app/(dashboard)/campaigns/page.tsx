@@ -98,7 +98,7 @@ export default function CampaignsPage() {
       const data = await res.json();
       if (data.success) setAutomations(data.data);
     } catch (err) {
-      console.error("Failed to fetch campaigns:", err);
+      console.error("Recupero delle campagne fallito:", err);
     } finally {
       setLoading(false);
     }
@@ -208,7 +208,7 @@ export default function CampaignsPage() {
         prev.map((a) => (a.id === id ? { ...a, isActive: !isActive } : a))
       );
     } catch (err) {
-      console.error("Failed to toggle:", err);
+      console.error("Attivazione/disattivazione fallita:", err);
     }
   }
 
@@ -223,7 +223,7 @@ export default function CampaignsPage() {
         1500
       );
     } catch (err) {
-      console.error("Failed to copy reel URL:", err);
+      console.error("Copia dell'URL del reel fallita:", err);
     }
   }
 
@@ -233,7 +233,7 @@ export default function CampaignsPage() {
       await fetch(`/api/automations?id=${id}`, { method: "DELETE" });
       setAutomations((prev) => prev.filter((a) => a.id !== id));
     } catch (err) {
-      console.error("Failed to delete:", err);
+      console.error("Eliminazione fallita:", err);
     }
   }
 
@@ -261,7 +261,7 @@ export default function CampaignsPage() {
           publicReplyMessages: auto.publicReplyMessages,
           trackedDestinationUrl: auto.trackedLinks[0]?.destinationUrl ?? "",
           secondaryDestinationUrl: auto.trackedLinks[1]?.destinationUrl ?? "",
-          secondaryButtonLabel: auto.trackedLinks[1]?.label ?? "Open link",
+          secondaryButtonLabel: auto.trackedLinks[1]?.label ?? "Apri il link",
           requireFollow: auto.requireFollow,
           followPromptMessage: auto.followPromptMessage,
           followPromptButtonLabel: auto.followPromptButtonLabel,
@@ -271,9 +271,9 @@ export default function CampaignsPage() {
       });
       const data = await res.json();
       if (data.success) void fetchAutomations();
-      else console.error("Duplicate failed:", data.error);
+      else console.error("Duplicazione fallita:", data.error);
     } catch (err) {
-      console.error("Failed to duplicate:", err);
+      console.error("Duplicazione fallita:", err);
     }
   }
 
@@ -324,13 +324,13 @@ export default function CampaignsPage() {
             href="/campaigns/import"
             className="flex-1 rounded border border-border px-4 py-2 text-center text-sm font-medium text-muted hover:text-foreground sm:flex-none"
           >
-            Import
+            Importa
           </Link>
           <Link
             href="/campaigns/new"
             className="flex-1 rounded bg-accent px-4 py-2 text-center text-sm font-medium text-white hover:bg-accent-hover sm:flex-none"
           >
-            New Campaign
+            Nuova campagna
           </Link>
         </div>
       </div>
@@ -341,7 +341,7 @@ export default function CampaignsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search campaigns by name, keyword, or message…"
+            placeholder="Cerca le campagne per nome, parola chiave o messaggio…"
             className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-zinc-500 focus:border-accent/40 focus:outline-none"
           />
           <div className="inline-flex shrink-0 rounded-lg bg-surface p-1">
@@ -366,15 +366,15 @@ export default function CampaignsPage() {
       {/* Empty state */}
       {automations.length === 0 && (
         <div className="panel rounded p-8 text-center sm:p-12">
-          <h3 className="text-lg font-semibold mb-2">No campaigns yet</h3>
+          <h3 className="text-lg font-semibold mb-2">Ancora nessuna campagna</h3>
           <p className="text-sm text-muted mb-6 max-w-sm mx-auto">
-            Create your first comment-to-DM campaign to turn a post or reel into a measurable conversation flow.
+            Crea la tua prima campagna da commento a DM per trasformare un post o un reel in una conversazione misurabile.
           </p>
           <Link
             href="/campaigns/new"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded bg-accent text-sm font-semibold text-white hover:bg-accent-hover transition-colors"
           >
-            Create Campaign
+            Crea la campagna
           </Link>
         </div>
       )}
@@ -382,7 +382,7 @@ export default function CampaignsPage() {
       {/* No matches for the current filter */}
       {automations.length > 0 && filtered.length === 0 && (
         <div className="panel rounded p-8 text-center text-sm text-muted">
-          No campaigns match your search.
+          Nessuna campagna corrisponde alla ricerca.
         </div>
       )}
 
@@ -407,13 +407,13 @@ export default function CampaignsPage() {
                       e.stopPropagation();
                       setPlayingVideo({ url: videoUrl, postUrl: auto.postUrl });
                     }}
-                    aria-label="Play reel preview"
+                    aria-label="Riproduci l'anteprima del reel"
                     className="shrink-0"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={thumbnails[auto.postId]}
-                      alt="Campaign reel"
+                      alt="Reel della campagna"
                       className="w-12 h-12 rounded object-cover border border-border hover:border-border-hover"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
@@ -431,7 +431,7 @@ export default function CampaignsPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={thumbnails[auto.postId]}
-                      alt="Campaign post"
+                      alt="Post della campagna"
                       className="w-12 h-12 rounded object-cover border border-border"
                       onError={(e) => {
                         e.currentTarget.style.display = "none";
@@ -453,16 +453,16 @@ export default function CampaignsPage() {
                         : "bg-zinc-500/10 text-muted"
                     }`}
                   >
-                    {auto.isActive ? "Active" : "Paused"}
+                    {auto.isActive ? "Attiva" : "In pausa"}
                   </span>
                   {auto.pendingNextReel && (
                     <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-warning">
-                      Waiting for next reel
+                      In attesa del prossimo reel
                     </span>
                   )}
                   {auto.requireFollow && (
                     <span className="shrink-0 rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
-                      Follow gate
+                      Obbligo di follow
                     </span>
                   )}
                   {auto.trackedLinks.length >= 2 && (
@@ -538,7 +538,7 @@ export default function CampaignsPage() {
                     onClick={() => void copyReelUrl(auto)}
                     className="shrink-0 rounded-full border border-border px-2.5 py-1 text-xs font-medium text-muted transition-colors hover:border-border-hover hover:text-foreground"
                   >
-                    {copiedId === auto.id ? "Copied!" : "Copy URL"}
+                    {copiedId === auto.id ? "Copiato!" : "Copia URL"}
                   </button>
                 )}
                 {/* Toggle */}
@@ -563,7 +563,7 @@ export default function CampaignsPage() {
                     onClick={() =>
                       setMenuOpenId((cur) => (cur === auto.id ? null : auto.id))
                     }
-                    aria-label="More actions"
+                    aria-label="Altre azioni"
                     className="px-2 py-1 rounded text-lg leading-none text-muted hover:text-foreground"
                   >
                     ⋯
@@ -579,7 +579,7 @@ export default function CampaignsPage() {
                           onClick={() => void duplicateAutomation(auto)}
                           className="block w-full px-3 py-2 text-left text-sm text-foreground hover:bg-surface-hover"
                         >
-                          Duplicate
+                          Duplica
                         </button>
                         <button
                           onClick={() => {
@@ -588,7 +588,7 @@ export default function CampaignsPage() {
                           }}
                           className="block w-full px-3 py-2 text-left text-sm text-error hover:bg-surface-hover"
                         >
-                          Delete
+                          Elimina
                         </button>
                       </div>
                     </>
@@ -619,7 +619,7 @@ export default function CampaignsPage() {
                   rel="noreferrer"
                   className="text-zinc-300 hover:text-white"
                 >
-                  Open on Instagram
+                  Apri su Instagram
                 </a>
               )}
               <button

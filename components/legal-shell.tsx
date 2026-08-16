@@ -24,7 +24,7 @@ export default function LegalShell({
             href="/login"
             className="text-sm font-semibold text-muted transition hover:text-foreground"
           >
-            Sign in
+            Accedi
           </Link>
         </div>
       </header>

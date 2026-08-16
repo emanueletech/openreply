@@ -10,13 +10,13 @@ import { usePathname } from "next/navigation";
 
 const pageTitles: Record<string, string> = {
   "/dashboard": "Dashboard",
-  "/campaigns": "Campaigns",
-  "/campaigns/new": "New Campaign",
-  "/automations": "Campaigns",
-  "/automations/new": "New Campaign",
-  "/logs": "DM Logs",
-  "/settings": "Settings",
-  "/diagnostics": "Diagnostics",
+  "/campaigns": "Campagne",
+  "/campaigns/new": "Nuova campagna",
+  "/automations": "Campagne",
+  "/automations/new": "Nuova campagna",
+  "/logs": "Registro DM",
+  "/settings": "Impostazioni",
+  "/diagnostics": "Diagnostica",
 };
 
 interface TopBarProps {
@@ -39,7 +39,7 @@ export default function TopBar({
         <button
           onClick={onMenuClick}
           className="lg:hidden shrink-0 px-2.5 py-1.5 rounded border border-border text-sm text-muted hover:text-foreground"
-          aria-label="Toggle sidebar"
+          aria-label="Apri/chiudi la barra laterale"
         >
           Menu
         </button>
@@ -58,8 +58,8 @@ export default function TopBar({
           className="shrink-0 whitespace-nowrap text-sm font-medium px-3 py-1.5 rounded bg-accent text-white hover:bg-accent-hover"
         >
           {/* Full label needs more room than a 360px header has to spare. */}
-          <span className="sm:hidden">Connect</span>
-          <span className="hidden sm:inline">Connect Instagram</span>
+          <span className="sm:hidden">Collega</span>
+          <span className="hidden sm:inline">Collega Instagram</span>
         </a>
       )}
     </header>

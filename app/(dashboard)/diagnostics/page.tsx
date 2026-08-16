@@ -124,35 +124,35 @@ export default function DiagnosticsPage() {
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-bold text-foreground">
-            Production Diagnostics
+            Diagnostica di produzione
           </h1>
           <p className="mt-1 text-sm text-muted">
-            Health, queues, webhook failures, billing events, and worker alerts.
+            Stato, code, errori dei webhook, eventi di fatturazione e avvisi del worker.
           </p>
         </div>
         <button
           onClick={() => void refreshDiagnostics()}
           className="rounded border border-border bg-surface px-4 py-2 text-sm font-semibold text-foreground transition hover:border-border-hover"
         >
-          Refresh
+          Aggiorna
         </button>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
         <div className="panel rounded p-4 sm:p-5">
           <p className="text-xs font-semibold uppercase text-muted">
-            Worker health
+            Stato del worker
           </p>
           <p
             className={`mt-3 text-2xl font-bold ${
               data?.workerHealth.healthy ? "text-success" : "text-warning"
             }`}
           >
-            {data?.workerHealth.healthy ? "Healthy" : "Needs attention"}
+            {data?.workerHealth.healthy ? "Tutto ok" : "Richiede attenzione"}
           </p>
           <p className="mt-2 text-xs text-muted">
             {workerAgeSeconds == null
-              ? "No heartbeat found"
+              ? "Nessun battito rilevato"
               : `Last heartbeat ${workerAgeSeconds}s ago`}
           </p>
         </div>
@@ -168,7 +168,7 @@ export default function DiagnosticsPage() {
         ))}
       </div>
 
-      <Section title="Recent Worker Alerts">
+      <Section title="Avvisi recenti del worker">
         {data?.workerAlerts.length ? (
           <div className="space-y-3">
             {data.workerAlerts.map((alert) => (
@@ -192,12 +192,12 @@ export default function DiagnosticsPage() {
             ))}
           </div>
         ) : (
-          <EmptyState label="No worker alerts recorded." />
+          <EmptyState label="Nessun avviso del worker registrato." />
         )}
       </Section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Section title="Campaign DM Failures And Skips">
+        <Section title="DM falliti e saltati della campagna">
           {data?.dmFailures.length ? (
             <div className="space-y-3">
               {data.dmFailures.map((item) => (
@@ -218,11 +218,11 @@ export default function DiagnosticsPage() {
               ))}
             </div>
           ) : (
-            <EmptyState label="No DM failures or skips." />
+            <EmptyState label="Nessun DM fallito o saltato." />
           )}
         </Section>
 
-        <Section title="Webhook Failures">
+        <Section title="Errori dei webhook">
           {data?.webhookFailures.length ? (
             <div className="space-y-3">
               {data.webhookFailures.map((event) => (
@@ -231,7 +231,7 @@ export default function DiagnosticsPage() {
                     {event.object ?? "Instagram webhook"}
                   </p>
                   <p className="mt-1 text-xs text-error">
-                    {event.errorMessage ?? "Unknown error"}
+                    {event.errorMessage ?? "Errore sconosciuto"}
                   </p>
                   <p className="mt-1 text-xs text-muted">
                     {formatDate(event.createdAt)}
@@ -240,13 +240,13 @@ export default function DiagnosticsPage() {
               ))}
             </div>
           ) : (
-            <EmptyState label="No failed webhook events." />
+            <EmptyState label="Nessun evento webhook fallito." />
           )}
         </Section>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Section title="Token Refresh Failures">
+        <Section title="Errori di rinnovo del token">
           {data?.tokenRefreshFailures.length ? (
             <div className="space-y-3">
               {data.tokenRefreshFailures.map((event) => (
@@ -261,13 +261,13 @@ export default function DiagnosticsPage() {
               ))}
             </div>
           ) : (
-            <EmptyState label="No token refresh failures." />
+            <EmptyState label="Nessun errore di rinnovo del token." />
           )}
         </Section>
 
       </div>
 
-      <Section title="Operational Event Timeline">
+      <Section title="Cronologia degli eventi operativi">
         {data?.operationalEvents.length ? (
           <div className="space-y-3">
             {data.operationalEvents.map((event) => (
@@ -279,7 +279,7 @@ export default function DiagnosticsPage() {
             ))}
           </div>
         ) : (
-          <EmptyState label="No operational events recorded." />
+          <EmptyState label="Nessun evento operativo registrato." />
         )}
       </Section>
     </div>

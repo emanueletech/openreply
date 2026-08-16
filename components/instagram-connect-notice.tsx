@@ -13,25 +13,25 @@ const TONE_CLASSES: Record<Tone, string> = {
 const MESSAGES: Record<string, { tone: Tone; title: string; detail: string }> = {
   denied: {
     tone: "warning",
-    title: "Instagram connection cancelled",
+    title: "Connessione a Instagram annullata",
     detail:
       "You declined the permission prompt on Instagram. Start again and accept all requested permissions.",
   },
   invalid: {
     tone: "error",
-    title: "Instagram connection expired",
+    title: "Connessione a Instagram scaduta",
     detail:
       "The login link was missing or older than 10 minutes. Click Connect Instagram to start a fresh attempt.",
   },
   forbidden: {
     tone: "error",
-    title: "Not permitted",
+    title: "Non consentito",
     detail:
-      "Only workspace owners and admins can connect an Instagram account.",
+      "Solo i proprietari e gli amministratori dello spazio di lavoro possono collegare un account Instagram.",
   },
   already_connected: {
     tone: "warning",
-    title: "Account already connected",
+    title: "Account già collegato",
     detail:
       "That Instagram account is connected to another workspace. Disconnect it there first, or connect a different account.",
   },
@@ -49,7 +49,7 @@ export function InstagramConnectNotice() {
       .filter(Boolean);
 
     return (
-      <Notice tone="error" title="Instagram app not configured">
+      <Notice tone="error" title="App Instagram non configurata">
         <p>
           Set{" "}
           {missing.length > 0
@@ -69,8 +69,7 @@ export function InstagramConnectNotice() {
         <p className="mt-2">
           See <span className="font-mono text-xs">docs/setup.md</span> for how to
           obtain each value. Note that{" "}
-          <span className="font-mono text-xs">ENCRYPTION_KEY</span> must be a
-          64-character hex string.
+          <span className="font-mono text-xs">ENCRYPTION_KEY</span> deve essere una stringa esadecimale di 64 caratteri.
         </p>
       </Notice>
     );
@@ -80,7 +79,7 @@ export function InstagramConnectNotice() {
     const reason = searchParams.get("reason");
 
     return (
-      <Notice tone="error" title="Instagram connection failed">
+      <Notice tone="error" title="Connessione a Instagram fallita">
         <p>
           Instagram accepted the login but the connection could not be
           completed. This is usually a mismatched redirect URI or an app that is

@@ -55,7 +55,7 @@ export default function SeoPageShell({ config }: { config: SeoPageConfig }) {
                 href="/templates"
                 className="inline-flex items-center justify-center border border-white/10 bg-white/[0.04] px-6 py-3 text-sm font-bold text-white transition hover:border-white/20 hover:bg-white/[0.08]"
               >
-                {config.secondaryCta ?? "Browse templates"}
+                {config.secondaryCta ?? "Sfoglia i modelli"}
               </Link>
             </div>
           </div>
@@ -93,7 +93,7 @@ export default function SeoPageShell({ config }: { config: SeoPageConfig }) {
             <div className="grid grid-cols-[0.8fr_1fr_1fr] border-b border-white/10 bg-zinc-950 text-xs font-bold uppercase tracking-wide text-zinc-500">
               <div className="p-4">Need</div>
               <div className="p-4 text-cyan-100">OpenReply</div>
-              <div className="p-4">Generic automation</div>
+              <div className="p-4">Automazione generica</div>
             </div>
             {config.comparisons.map((item) => (
               <div
@@ -118,7 +118,7 @@ export default function SeoPageShell({ config }: { config: SeoPageConfig }) {
       <section className="mx-auto grid w-full max-w-7xl gap-8 px-5 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
         <div>
           <p className="text-sm font-bold uppercase text-emerald-200">
-            Start from a template
+            Parti da un modello
           </p>
           <h2 className="mt-3 text-4xl font-black text-white">
             Launch a campaign faster than building a chatbot flow

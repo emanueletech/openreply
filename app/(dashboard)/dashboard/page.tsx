@@ -101,7 +101,7 @@ export default function DashboardPage() {
             {stats?.contactsCount === 1 ? "contact" : "contacts"}
             {" · "}
             <a href="/logs" className="text-accent hover:underline">
-              See activity
+              Vedi l'attività
             </a>
           </p>
         </div>
@@ -117,13 +117,13 @@ export default function DashboardPage() {
       {/* Stat Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         <StatCard
-          label="Active Campaigns"
+          label="Campagne attive"
           value={stats?.activeAutomations ?? 0}
         />
-        <StatCard label="DMs Sent" value={stats?.dmsSentMonth ?? 0} />
-        <StatCard label="Skipped" value={stats?.dmsSkippedMonth ?? 0} />
-        <StatCard label="Failed" value={stats?.dmsFailedMonth ?? 0} />
-        <StatCard label="Clicks" value={stats?.clicksThisMonth ?? 0} />
+        <StatCard label="DM inviati" value={stats?.dmsSentMonth ?? 0} />
+        <StatCard label="Saltato" value={stats?.dmsSkippedMonth ?? 0} />
+        <StatCard label="Fallito" value={stats?.dmsFailedMonth ?? 0} />
+        <StatCard label="Clic" value={stats?.clicksThisMonth ?? 0} />
         <StatCard label="CTR" value={`${stats?.ctrThisMonth ?? 0}%`} />
       </div>
 
@@ -131,7 +131,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-6 gap-4 sm:gap-6">
         {/* 7-Day Chart */}
         <div className="lg:col-span-3 panel rounded p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-foreground mb-6">DMs — Last 7 Days</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-6">DM — ultimi 7 giorni</h2>
           <div className="flex items-end gap-1.5 h-40 sm:gap-2">
             {stats?.dailyDMs.map((day) => (
               <div key={day.date} className="min-w-0 flex-1 flex flex-col items-center gap-2">
@@ -151,10 +151,10 @@ export default function DashboardPage() {
 
         {/* Top Keywords */}
         <div className="lg:col-span-1 panel rounded p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-foreground mb-4">Top Keywords</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-4">Parole chiave principali</h2>
           <div className="space-y-3">
             {stats?.topKeywords.length === 0 && (
-              <p className="text-sm text-muted py-8">No keyword matches yet</p>
+              <p className="text-sm text-muted py-8">Ancora nessuna corrispondenza</p>
             )}
             {stats?.topKeywords.map((keyword) => (
               <div key={keyword.keyword} className="flex items-center justify-between gap-3">
@@ -169,10 +169,10 @@ export default function DashboardPage() {
 
         {/* Recent Activity */}
         <div className="lg:col-span-2 panel rounded p-4 sm:p-6">
-          <h2 className="text-sm font-semibold text-foreground mb-4">Recent Activity</h2>
+          <h2 className="text-sm font-semibold text-foreground mb-4">Attività recente</h2>
           <div className="space-y-3 max-h-60 overflow-y-auto">
             {stats?.recentLogs.length === 0 && (
-              <p className="text-sm text-muted text-center py-8">No activity yet</p>
+              <p className="text-sm text-muted text-center py-8">Ancora nessuna attività</p>
             )}
             {stats?.recentLogs.map((log) => (
               <div

@@ -55,7 +55,7 @@ export default function KeywordInput({ keywords, onChange, max = 10 }: KeywordIn
               aria-label={`Remove ${keyword}`}
               className="text-muted hover:text-error"
             >
-              Remove
+              Rimuovi
             </button>
           </span>
         ))}
@@ -64,7 +64,7 @@ export default function KeywordInput({ keywords, onChange, max = 10 }: KeywordIn
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={keywords.length === 0 ? "Type keyword and press Enter..." : ""}
+          placeholder={keywords.length === 0 ? "Scrivi la parola chiave e premi Invio..." : ""}
           className="flex-1 min-w-[120px] bg-transparent text-sm text-foreground placeholder:text-zinc-500 outline-none"
         />
       </div>

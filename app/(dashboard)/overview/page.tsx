@@ -27,10 +27,10 @@ function formatDate(iso: string): string {
 }
 
 const COUNT_OPTIONS = [
-  { value: "25", label: "Last 25" },
-  { value: "50", label: "Last 50" },
-  { value: "100", label: "Last 100" },
-  { value: "all", label: "All time" },
+  { value: "25", label: "Ultimi 25" },
+  { value: "50", label: "Ultimi 50" },
+  { value: "100", label: "Ultimi 100" },
+  { value: "all", label: "Sempre" },
 ];
 
 export default function OverviewPage() {
@@ -54,10 +54,10 @@ export default function OverviewPage() {
           setData(res.data);
           setError(null);
         } else {
-          setError(res.error ?? "Failed to load overview");
+          setError(res.error ?? "Caricamento della panoramica fallito");
         }
       })
-      .catch(() => setError("Failed to load overview"))
+      .catch(() => setError("Caricamento della panoramica fallito"))
       .finally(() => setLoading(false));
   }, [selectedAccountId, count]);
 
@@ -93,7 +93,7 @@ export default function OverviewPage() {
             href="/api/instagram/connect"
             className="mt-4 inline-block text-sm text-accent hover:underline"
           >
-            Connect Instagram
+            Collega Instagram
           </a>
         )}
       </div>
@@ -109,9 +109,9 @@ export default function OverviewPage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-lg font-semibold text-foreground">Overview</h1>
+          <h1 className="text-lg font-semibold text-foreground">Panoramica</h1>
           <p className="text-sm text-muted mt-1">
-            {data.requestedCount === "all" ? "All-time" : "Recent"} —{" "}
+            {data.requestedCount === "all" ? "Da sempre" : "Recenti"} —{" "}
             {totals.posts} post{totals.posts === 1 ? "" : "s"} from @
             {data.account.username}
             {data.truncated ? ` (capped at ${totals.posts})` : ""}
@@ -158,29 +158,28 @@ export default function OverviewPage() {
       {!insightsAvailable && (
         <div className="panel rounded p-4 border border-border">
           <p className="text-sm text-foreground">
-            Views, reach, saved and shares need the insights permission.
+            Visualizzazioni, copertura, salvataggi e condivisioni richiedono il permesso per le statistiche.
           </p>
           <p className="text-sm text-muted mt-1">
-            Reconnect your account to grant it — likes and comments are shown in
-            the meantime.
+            Ricollega il tuo account per concederlo — nel frattempo vedi solo Mi piace e commenti.
           </p>
           <a
             href="/api/instagram/connect"
             className="mt-3 inline-block text-sm text-accent hover:underline"
           >
-            Reconnect Instagram
+            Ricollega Instagram
           </a>
         </div>
       )}
 
       {/* Aggregate totals */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-        <StatCard label="Views" value={formatNumber(totals.views)} />
-        <StatCard label="Reach" value={formatNumber(totals.reach)} />
-        <StatCard label="Likes" value={formatNumber(totals.likes)} />
-        <StatCard label="Comments" value={formatNumber(totals.comments)} />
-        <StatCard label="Saved" value={formatNumber(totals.saved)} />
-        <StatCard label="Shares" value={formatNumber(totals.shares)} />
+        <StatCard label="Visualizzazioni" value={formatNumber(totals.views)} />
+        <StatCard label="Copertura" value={formatNumber(totals.reach)} />
+        <StatCard label="Mi piace" value={formatNumber(totals.likes)} />
+        <StatCard label="Commenti" value={formatNumber(totals.comments)} />
+        <StatCard label="Salvato" value={formatNumber(totals.saved)} />
+        <StatCard label="Condivisioni" value={formatNumber(totals.shares)} />
       </div>
 
       {/* Follower trend — account-level, independent of the post range */}
@@ -188,9 +187,9 @@ export default function OverviewPage() {
 
       {/* Per-post table */}
       <div className="panel rounded p-4 sm:p-6">
-        <h2 className="text-sm font-semibold text-foreground mb-4">Posts</h2>
+        <h2 className="text-sm font-semibold text-foreground mb-4">Post</h2>
         {posts.length === 0 ? (
-          <p className="text-sm text-muted py-8 text-center">No posts found</p>
+          <p className="text-sm text-muted py-8 text-center">Nessun post trovato</p>
         ) : (
           // Eight metric columns can't compress into a phone; let the table keep
           // its natural width and scroll inside the panel instead.
@@ -199,13 +198,13 @@ export default function OverviewPage() {
               <thead>
                 <tr className="text-left text-xs uppercase tracking-wide text-zinc-500 border-b border-border">
                   <th className="py-2 pr-4 font-medium">Post</th>
-                  <th className="py-2 px-3 font-medium text-right">Views</th>
-                  <th className="py-2 px-3 font-medium text-right">Reach</th>
-                  <th className="py-2 px-3 font-medium text-right">Likes</th>
-                  <th className="py-2 px-3 font-medium text-right">Comments</th>
-                  <th className="py-2 px-3 font-medium text-right">Saved</th>
-                  <th className="py-2 px-3 font-medium text-right">Shares</th>
-                  <th className="py-2 pl-3 font-medium text-right">Date</th>
+                  <th className="py-2 px-3 font-medium text-right">Visualizzazioni</th>
+                  <th className="py-2 px-3 font-medium text-right">Copertura</th>
+                  <th className="py-2 px-3 font-medium text-right">Mi piace</th>
+                  <th className="py-2 px-3 font-medium text-right">Commenti</th>
+                  <th className="py-2 px-3 font-medium text-right">Salvato</th>
+                  <th className="py-2 px-3 font-medium text-right">Condivisioni</th>
+                  <th className="py-2 pl-3 font-medium text-right">Data</th>
                 </tr>
               </thead>
               <tbody>

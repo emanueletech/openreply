@@ -15,8 +15,8 @@ import { parseCsv } from "@/lib/utils/csv";
 import { IMPORT_QUEUE_KEY, IMPORT_ACCOUNT_KEY } from "@/lib/import-queue";
 
 const SAMPLE = `keywords,dm_message,public_reply,tracked_url,opening_dm,opening_dm_button
-"yc","here it is: {link}","sent. check dms","https://events.ycombinator.com/startup-school-2026","hey! click below for the referral","send link"
-"LINK,SHOP","grab it here: {link}","dmed u",,,`;
+"yc","eccolo qui: {link}","inviato, controlla i messaggi","https://events.ycombinator.com/startup-school-2026","ciao! tocca qui sotto per il link","manda il link"
+"LINK,SHOP","prendilo qui: {link}","ti ho scritto in DM",,,`;
 
 export default function ImportCampaignsPage() {
   const router = useRouter();
@@ -42,7 +42,7 @@ export default function ImportCampaignsPage() {
     setError(null);
     const parsed = parseCsv(csv);
     if (parsed.length === 0) {
-      setError("Paste a CSV with a header row and at least one campaign.");
+      setError("Incolla un CSV con la riga di intestazione e almeno una campagna.");
       return;
     }
 
@@ -76,7 +76,7 @@ export default function ImportCampaignsPage() {
         window.localStorage.setItem(IMPORT_ACCOUNT_KEY, selectedAccountId);
       }
     } catch {
-      setError("Could not stage the import in this browser.");
+      setError("Non è stato possibile preparare l'importazione in questo browser.");
       return;
     }
     router.push("/campaigns/new");
@@ -85,7 +85,7 @@ export default function ImportCampaignsPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-lg font-semibold">Import campaigns</h1>
+        <h1 className="text-lg font-semibold">Importa campagne</h1>
         <p className="text-sm text-muted mt-1">
           Paste a CSV with one row per campaign. Each row opens in the builder
           prefilled and editable, so you can review it and pick the reel before
@@ -98,8 +98,7 @@ export default function ImportCampaignsPage() {
           <code className="text-accent">opening_dm</code>,{" "}
           <code className="text-accent">opening_dm_button</code>. Keywords go in
           one cell, separated by commas. Use{" "}
-          <code className="text-accent">{"{link}"}</code> in the message to
-          insert the tracked link.
+          <code className="text-accent">{"{link}"}</code> nel messaggio per inserire il link tracciato.
         </p>
       </div>
 
@@ -112,7 +111,7 @@ export default function ImportCampaignsPage() {
       {accounts.length > 1 && (
         <div className="space-y-2">
           <label className="block text-sm font-medium text-foreground">
-            Instagram account
+            Account Instagram
           </label>
           <AccountSelect
             accounts={accounts}
@@ -138,7 +137,7 @@ export default function ImportCampaignsPage() {
           onClick={() => setCsv(SAMPLE)}
           className="text-xs text-muted hover:text-foreground"
         >
-          Fill with a sample
+          Compila con un esempio
         </button>
       </div>
 
@@ -147,13 +146,13 @@ export default function ImportCampaignsPage() {
           onClick={startImport}
           className="px-5 py-2 rounded bg-accent text-sm font-medium text-white hover:bg-accent-hover"
         >
-          Review and import
+          Controlla e importa
         </button>
         <button
           onClick={() => router.push("/campaigns")}
           className="px-5 py-2 rounded text-sm text-muted hover:text-foreground border border-border"
         >
-          Cancel
+          Annulla
         </button>
       </div>
     </div>
