@@ -36,7 +36,10 @@ export default function DashboardShell({
           instagramAccountCount={instagramAccountCount}
         />
 
-        <main className="flex-1 overflow-y-auto">
+        {/* overflow-x-hidden: attivando lo scorrimento verticale il browser
+            abilita da solo anche quello orizzontale, ed è così che sul telefono
+            ci si ritrovava a spostare la pagina di lato. */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
           <div className="px-4 lg:px-8 py-5 sm:py-6 max-w-7xl mx-auto">
             {children}
           </div>

@@ -627,9 +627,13 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
         </div>
       </div>
 
+      {/* min-w-0 sulle celle: per impostazione predefinita una cella di griglia
+          non si restringe sotto la larghezza del proprio contenuto, così un
+          testo lungo allarga tutta la pagina e sul telefono si finisce a
+          scorrere di lato. */}
       <div className="grid gap-6 lg:grid-cols-[300px_1fr] lg:gap-8">
       {/* Left: controls */}
-      <div className="space-y-8">
+      <div className="space-y-8 min-w-0">
         {error && (
           <div className="rounded border border-error/20 bg-error/10 p-3 text-sm text-error">
             {error}
@@ -1019,7 +1023,7 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
       {/* Right: preview */}
       <div>
         <p className="mb-4 text-sm text-muted">Anteprima</p>
-        <div className="flex justify-center lg:sticky lg:top-6 lg:block">
+        <div className="flex min-w-0 justify-center lg:sticky lg:top-6 lg:block">
           <CampaignPreview
             tab={previewTab}
             onTabChange={setPreviewTab}
