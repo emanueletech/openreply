@@ -87,17 +87,19 @@ export default function ImportCampaignsPage() {
       <div>
         <h1 className="text-lg font-semibold">Importa campagne</h1>
         <p className="text-sm text-muted mt-1">
-          Paste a CSV with one row per campaign. Each row opens in the builder
-          prefilled and editable, so you can review it and pick the reel before
-          saving. Required columns are{" "}
-          <code className="text-accent">keywords</code> and{" "}
-          <code className="text-accent">dm_message</code>. Optional:{" "}
+          Serve a creare più campagne in una volta sola, partendo da un foglio
+          di calcolo invece di compilare il builder una campagna alla volta.
+          Incolla un CSV con una riga per campagna: ogni riga si apre nel
+          builder già compilata e modificabile, così la controlli e scegli il
+          reel prima di salvare. Le colonne obbligatorie sono{" "}
+          <code className="text-accent">keywords</code> e{" "}
+          <code className="text-accent">dm_message</code>. Facoltative:{" "}
           <code className="text-accent">name</code>,{" "}
           <code className="text-accent">public_reply</code>,{" "}
           <code className="text-accent">tracked_url</code>,{" "}
           <code className="text-accent">opening_dm</code>,{" "}
-          <code className="text-accent">opening_dm_button</code>. Keywords go in
-          one cell, separated by commas. Use{" "}
+          <code className="text-accent">opening_dm_button</code>. Le parole
+          chiave vanno tutte in una cella, separate da virgole. Usa{" "}
           <code className="text-accent">{"{link}"}</code> nel messaggio per inserire il link tracciato.
         </p>
       </div>
