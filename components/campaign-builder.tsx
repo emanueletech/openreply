@@ -622,7 +622,7 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
             disabled={saving}
             className="rounded-lg bg-accent px-5 py-2 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
           >
-            {saving ? "Salvataggio…" : mode === "new" ? "Attiva la campagna" : "Salva modifiche"}
+            {saving ? "Salvataggio…" : mode === "new" ? "Crea e attiva" : "Salva modifiche"}
           </button>
         </div>
       </div>
