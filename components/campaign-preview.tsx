@@ -294,7 +294,7 @@ function CommentsScreen({
           <div className="mb-3 flex items-center gap-2">
             <Avatar url={avatarUrl} size={28} />
             <div className="flex-1 rounded-full bg-zinc-800 px-3 py-2 text-xs text-zinc-500">
-              Add a comment for {username}…
+              Aggiungi un commento per {username}…
             </div>
           </div>
         </div>

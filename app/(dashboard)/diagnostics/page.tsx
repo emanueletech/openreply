@@ -153,7 +153,7 @@ export default function DiagnosticsPage() {
           <p className="mt-2 text-xs text-muted">
             {workerAgeSeconds == null
               ? "Nessun battito rilevato"
-              : `Last heartbeat ${workerAgeSeconds}s ago`}
+              : `Ultimo battito ${workerAgeSeconds}s fa`}
           </p>
         </div>
         {["waiting", "active", "delayed", "failed"].map((key) => (

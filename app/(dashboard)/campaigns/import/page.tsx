@@ -56,7 +56,7 @@ export default function ImportCampaignsPage() {
         .slice(0, 10);
       const dmMessage = (r.dm_message ?? r.message ?? "").trim();
       if (keywords.length === 0 || !dmMessage) {
-        setError(`Row ${i + 1} is missing keywords or a message.`);
+        setError(`Alla riga ${i + 1} mancano le parole chiave o il messaggio.`);
         return;
       }
       rows.push({

@@ -399,7 +399,7 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
     setSaving(true);
 
     const payload = {
-      name: name.trim() || `Campaign for @${username}`,
+      name: name.trim() || `Campagna per @${username}`,
       instagramAccountId: selectedAccountId,
       postId: triggerScope === "specific" ? postId : null,
       postUrl: triggerScope === "specific" ? postUrl : null,
@@ -1005,10 +1005,10 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
                 </div>
                 <p className="text-xs text-muted">
                   {followUpDelayMinutes > 0
-                    ? `Sent ${followUpDelayMinutes} min after they tap through.`
+                    ? `Inviato ${followUpDelayMinutes} min dopo che ha toccato il pulsante.`
                     : "Inviato subito dopo che ha toccato il pulsante."}
-                  {" {username}"} personalizes it. Max 24 hours, to stay inside
-                  Instagram&apos;s messaging window.
+                  {" {username}"} lo personalizza. Al massimo 24 ore, per
+                  restare dentro la finestra di messaggistica di Instagram.
                 </p>
               </div>
             )}

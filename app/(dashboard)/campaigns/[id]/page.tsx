@@ -214,7 +214,7 @@ export default function CampaignDetailPage() {
           <FieldBox>{matchText}</FieldBox>
           {campaign.dmTriggerEnabled && (
             <p className="text-xs text-muted">
-              Also replies when someone DMs{" "}
+              Risponde anche a chi scrive in DM{" "}
               {campaign.matchAnyWord ? "qualsiasi parola" : "queste parole"}.
             </p>
           )}
@@ -284,7 +284,7 @@ export default function CampaignDetailPage() {
             <FieldBox>{campaign.followUpMessage}</FieldBox>
             <p className="text-xs text-muted">
               {campaign.followUpDelayMinutes && campaign.followUpDelayMinutes > 0
-                ? `Sent ${campaign.followUpDelayMinutes} min after the link.`
+                ? `Inviato ${campaign.followUpDelayMinutes} min dopo il link.`
                 : "Inviato subito dopo il link."}
             </p>
           </Summary>

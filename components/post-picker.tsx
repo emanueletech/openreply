@@ -138,7 +138,7 @@ export default function PostPicker({
       </div>
       {visible.length === 0 ? (
         <p className="py-6 text-center text-sm text-muted">
-          No posts match &ldquo;{query}&rdquo;
+          Nessun post corrisponde a &ldquo;{query}&rdquo;
         </p>
       ) : (
         <>
@@ -167,7 +167,7 @@ export default function PostPicker({
               setHoveredId((cur) => (cur === post.id ? null : cur))
             }
             aria-pressed={isSelected}
-            title={isUsed ? `Already used by "${usedByName}"` : undefined}
+            title={isUsed ? `Già usato da "${usedByName}"` : undefined}
             className={`
               relative aspect-square rounded overflow-hidden border-2
               ${

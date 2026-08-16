@@ -1,14 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { FRASI_PRONTE, type TipoFrase } from "@/lib/frasi-pronte";
+import { useEffect, useState } from "react";
+import { FRASI_PRONTE, LINGUE, type Lingua, type TipoFrase } from "@/lib/frasi-pronte";
 
-// Riga di frasi pronte da infilare in un campo con un clic.
-// Aggiunta locale (non fa parte di OpenReply originale): sta tutta qui dentro,
-// così un aggiornamento della repo non se la porta via.
+const CHIAVE_LINGUA = "openreply:lingua-frasi";
+
+// Riga di frasi pronte da infilare in un campo con un clic, in italiano o in
+// inglese. Aggiunta locale (non fa parte di OpenReply originale).
 //
-// Le classi ricalcano quelle già usate nel builder — bordo `border-border`,
-// testo `text-muted` che schiarisce al passaggio — per non stonare col resto.
+// La lingua scelta resta memorizzata nel browser: chi scrive quasi sempre in
+// una lingua sola non deve rimetterla a ogni campo, ma può cambiarla al volo
+// quando prepara una campagna per un pubblico diverso.
 export function FrasiPronte({
   tipo,
   onScegli,
@@ -19,18 +21,59 @@ export function FrasiPronte({
   etichetta?: string;
 }) {
   const [aperto, setAperto] = useState(false);
-  const frasi = FRASI_PRONTE[tipo] ?? [];
+  const [lingua, setLingua] = useState<Lingua>("it");
+
+  useEffect(() => {
+    try {
+      const salvata = window.localStorage.getItem(CHIAVE_LINGUA);
+      if (salvata === "it" || salvata === "en") setLingua(salvata);
+    } catch {
+      // localStorage negato (navigazione privata): resta l'italiano
+    }
+  }, []);
+
+  function cambiaLingua(nuova: Lingua) {
+    setLingua(nuova);
+    try {
+      window.localStorage.setItem(CHIAVE_LINGUA, nuova);
+    } catch {
+      // se non si può memorizzare, vale solo per questa sessione
+    }
+  }
+
+  const frasi = FRASI_PRONTE[lingua][tipo] ?? [];
   if (frasi.length === 0) return null;
 
   return (
     <div className="mt-2">
-      <button
-        type="button"
-        onClick={() => setAperto((v) => !v)}
-        className="text-xs font-medium text-accent hover:underline"
-      >
-        {aperto ? "Nascondi le frasi pronte" : etichetta}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setAperto((v) => !v)}
+          className="text-xs font-medium text-accent hover:underline"
+        >
+          {aperto ? "Nascondi le frasi pronte" : etichetta}
+        </button>
+
+        {aperto && (
+          <div className="flex items-center gap-1">
+            {LINGUE.map(({ codice, etichetta: nome }) => (
+              <button
+                key={codice}
+                type="button"
+                onClick={() => cambiaLingua(codice)}
+                className={`rounded-full px-2 py-0.5 text-[11px] ${
+                  lingua === codice
+                    ? "bg-accent/10 font-medium text-accent"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                {nome}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {aperto && (
         <div className="mt-2 flex flex-wrap gap-2">
@@ -38,8 +81,6 @@ export function FrasiPronte({
             <button
               key={frase}
               type="button"
-              // sostituisce il contenuto del campo: si sceglie una frase e la si
-              // ritocca, invece di accodarne una dietro l'altra per sbaglio
               onClick={() => {
                 onScegli(frase);
                 setAperto(false);
