@@ -155,7 +155,11 @@ export default function PostPicker({
               Già usata
             </p>
           )}
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-64 overflow-y-auto p-1">
+          {/* auto-rows-min + content-start: senza, le righe si spartiscono
+              l'altezza massima del riquadro invece di scorrere, e le miniature
+              si schiacciano in striscioline (si vede sul telefono, dove le
+              righe sono tante e lo spazio poco). */}
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-64 auto-rows-min content-start overflow-y-auto p-1">
             {visible.map((post) => {
               const isSelected = selectedPostId === post.id;
               const usedByName = usedPostIds?.[post.id];
