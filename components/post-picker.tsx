@@ -137,7 +137,13 @@ export default function PostPicker({
       <div className="flex items-center justify-between gap-2">
         <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            // Si torna al primo blocco a ogni nuova ricerca: senza questo, una
+            // griglia espansa sotto la ricerca precedente resta espansa quando
+            // la si svuota, che e' proprio il caso che il blocco evita.
+            setMostrati(60);
+          }}
           placeholder="Cerca tra i tuoi post per didascalia…"
           className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-zinc-500 focus:border-accent/40 focus:outline-none"
         />
