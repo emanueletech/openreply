@@ -559,8 +559,9 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
             Importing {importTotal - importQueue.length + 1} of {importTotal}.
           </span>{" "}
           <span className="text-muted">
-            Fields are prefilled from your CSV. Pick the reel, edit anything, and
-            save to load the next one — or Skip if you don&rsquo;t want this one.
+            I campi sono precompilati dal tuo CSV. Scegli il reel, modifica
+            quello che vuoi e salva per passare al prossimo — oppure premi
+            Salta se questo non ti serve.
           </span>
         </div>
       )}
@@ -790,7 +791,7 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
                   }
                   className="text-xs font-medium text-accent hover:underline"
                 >
-                  + Aggiungi un'altra risposta
+                  + Aggiungi un&apos;altra risposta
                 </button>
               )}
               {/* Qui la frase scelta non sostituisce il campo ma si aggiunge
@@ -856,7 +857,7 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
           <div className="mt-3 rounded-lg border border-border p-3">
             <div className="flex items-center justify-between">
               <span className="text-sm text-foreground">
-                prima l'obbligo di seguirti
+                prima l&apos;obbligo di seguirti
               </span>
               <Toggle
                 on={requireFollow}
@@ -887,9 +888,9 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
                   etichetta="Testi pronti per il pulsante"
                 />
                 <p className="text-xs text-muted">
-                  We send the link only after they tap the button and Instagram
-                  confirms the follow. If it can&apos;t be verified, we send it
-                  anyway.
+                  Inviamo il link solo dopo che ha toccato il pulsante e
+                  Instagram conferma il follow. Se non si riesce a verificarlo,
+                  lo inviamo comunque.
                 </p>
               </div>
             )}

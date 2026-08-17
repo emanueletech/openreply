@@ -134,8 +134,8 @@ export default function FollowerChart({
             {data.length === 0
               ? "Ancora nessuna rilevazione registrata."
               : "Finora è stato registrato un solo giorno."}{" "}
-            A point is added daily — the chart appears once there are at least
-            two.
+            Viene aggiunto un punto al giorno — il grafico compare quando ce
+            ne sono almeno due.
           </p>
         </div>
       ) : showTable ? (

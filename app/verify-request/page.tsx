@@ -22,7 +22,7 @@ export default function VerifyRequestPage() {
           </p>
           <p className="mt-6 text-sm">
             <Link href="/login" className="text-accent hover:underline">
-              Torna all'accesso
+              Torna all&apos;accesso
             </Link>
           </p>
         </div>

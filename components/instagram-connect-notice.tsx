@@ -51,11 +51,11 @@ export function InstagramConnectNotice() {
     return (
       <Notice tone="error" title="App Instagram non configurata">
         <p>
-          Set{" "}
+          Imposta{" "}
           {missing.length > 0
-            ? "these environment variables"
-            : "the required environment variables"}{" "}
-          and restart the server:
+            ? "queste variabili d'ambiente"
+            : "le variabili d'ambiente richieste"}{" "}
+          e riavvia il server:
         </p>
         {missing.length > 0 && (
           <ul className="mt-2 space-y-1">
@@ -67,8 +67,8 @@ export function InstagramConnectNotice() {
           </ul>
         )}
         <p className="mt-2">
-          See <span className="font-mono text-xs">docs/setup.md</span> for how to
-          obtain each value. Note that{" "}
+          Vedi <span className="font-mono text-xs">docs/setup.md</span> per sapere
+          come ricavare ogni valore. Nota che{" "}
           <span className="font-mono text-xs">ENCRYPTION_KEY</span> deve essere una stringa esadecimale di 64 caratteri.
         </p>
       </Notice>
@@ -81,9 +81,9 @@ export function InstagramConnectNotice() {
     return (
       <Notice tone="error" title="Connessione a Instagram fallita">
         <p>
-          Instagram accepted the login but the connection could not be
-          completed. This is usually a mismatched redirect URI or an app that is
-          missing the required permissions.
+          Instagram ha accettato l&apos;accesso ma la connessione non è andata a
+          buon fine. Di solito dipende da un URL di reindirizzamento che non
+          combacia, oppure da un&apos;app a cui mancano i permessi necessari.
         </p>
         {reason && (
           <p className="mt-2 font-mono text-xs break-words opacity-80">

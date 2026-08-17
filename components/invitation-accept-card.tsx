@@ -56,7 +56,7 @@ export default function InvitationAcceptCard({
       </button>
       {message && <p className="text-sm text-error">{message}</p>}
       <p className="text-xs text-muted">
-        Use the magic link account for {invitedEmail}.
+        Usa il link di accesso ricevuto all&apos;indirizzo {invitedEmail}.
       </p>
     </div>
   );

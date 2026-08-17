@@ -24,8 +24,12 @@ export function FrasiPronte({
   const [lingua, setLingua] = useState<Lingua>("it");
 
   useEffect(() => {
+    // Recuperare la preferenza dal browser va fatto dopo il primo disegno,
+    // altrimenti il server e il client partirebbero da valori diversi. Stessa
+    // deroga già usata altrove nel progetto per la lettura della cache.
     try {
       const salvata = window.localStorage.getItem(CHIAVE_LINGUA);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (salvata === "it" || salvata === "en") setLingua(salvata);
     } catch {
       // localStorage negato (navigazione privata): resta l'italiano
