@@ -33,6 +33,8 @@ export const viewport: Viewport = {
   // niente zoom involontario sui campi di testo dell'iPhone
   width: "device-width",
   initialScale: 1,
+  // Installed on iOS the app owns the full screen, notch included; the safe
+  // area insets below keep content clear of the system UI.
   viewportFit: "cover",
 };
 
