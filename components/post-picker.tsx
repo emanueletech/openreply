@@ -12,6 +12,8 @@
 import { useEffect, useState } from "react";
 import { readCache, writeCache } from "@/lib/client-cache";
 
+const PAGE_SIZE = 60;
+
 interface InstagramPost {
   id: string;
   caption?: string;
@@ -42,12 +44,15 @@ export default function PostPicker({
   onSelect,
 }: PostPickerProps) {
   const [posts, setPosts] = useState<InstagramPost[]>([]);
-  const [mostrati, setMostrati] = useState(60);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   // The post currently hovered — its video (if it's a reel) plays a preview.
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  // The grid loads the whole library (all=true). On accounts with hundreds of
+  // posts, rendering every tile at once is enough to make mobile Safari drop
+  // the page, so they are revealed in batches.
+  const [shown, setShown] = useState(PAGE_SIZE);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,17 +125,14 @@ export default function PostPicker({
     );
   }
 
-  const filtrati = query.trim()
+  const matching = query.trim()
     ? posts.filter((p) =>
         (p.caption ?? "").toLowerCase().includes(query.trim().toLowerCase())
       )
     : posts;
 
-  // Anche col caricamento pigro delle immagini, mettere in pagina centinaia di
-  // riquadri appesantisce il telefono: se ne mostra un blocco per volta, e chi
-  // cerca un post vecchio usa la ricerca per didascalia o preme "Mostra altri".
-  const visible = filtrati.slice(0, mostrati);
-  const altriDaMostrare = filtrati.length - visible.length;
+  const visible = matching.slice(0, shown);
+  const remaining = matching.length - visible.length;
 
   return (
     <div className="space-y-2">
@@ -139,10 +141,10 @@ export default function PostPicker({
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            // Si torna al primo blocco a ogni nuova ricerca: senza questo, una
-            // griglia espansa sotto la ricerca precedente resta espansa quando
-            // la si svuota, che e' proprio il caso che il blocco evita.
-            setMostrati(60);
+            // Back to one batch on every new search. Without this, a grid
+            // expanded under an earlier query stays expanded once it is
+            // cleared, which is the case this whole change exists to avoid.
+            setShown(PAGE_SIZE);
           }}
           placeholder="Cerca tra i tuoi post per didascalia…"
           className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-zinc-500 focus:border-accent/40 focus:outline-none"
@@ -161,10 +163,9 @@ export default function PostPicker({
               Già usata
             </p>
           )}
-          {/* auto-rows-min + content-start: senza, le righe si spartiscono
-              l'altezza massima del riquadro invece di scorrere, e le miniature
-              si schiacciano in striscioline (si vede sul telefono, dove le
-              righe sono tante e lo spazio poco). */}
+          {/* auto-rows-min + content-start keep each row at its natural height.
+              Without them the rows share out max-h-64 instead of scrolling, and
+              the square thumbnails flatten into strips. */}
           <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-64 auto-rows-min content-start overflow-y-auto p-1">
             {visible.map((post) => {
               const isSelected = selectedPostId === post.id;
@@ -237,13 +238,13 @@ export default function PostPicker({
               );
             })}
           </div>
-          {altriDaMostrare > 0 && (
+          {remaining > 0 && (
             <button
               type="button"
-              onClick={() => setMostrati((n) => n + 60)}
+              onClick={() => setShown((n) => n + PAGE_SIZE)}
               className="w-full rounded-lg border border-border py-2 text-sm text-muted hover:text-foreground"
             >
-              Mostra altri {Math.min(60, altriDaMostrare)} post
+              Mostra altri {Math.min(PAGE_SIZE, remaining)} post
             </button>
           )}
         </>
