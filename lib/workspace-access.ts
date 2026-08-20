@@ -31,6 +31,34 @@ export function canManageBilling(role: WorkspaceRole) {
   return role === "OWNER";
 }
 
+/// Context for machine-to-machine calls (the publishing automation on the NAS),
+/// which create a campaign before the reel exists and have no browser session.
+/// Authenticated with AUTOMATION_API_TOKEN, acting as the workspace owner.
+/// Returns null when the token is unset or does not match, so session auth stays
+/// the only way in unless the operator opts in.
+export async function getTokenWorkspaceContext(
+  request: Request
+): Promise<WorkspaceContext | null> {
+  const expected = process.env.AUTOMATION_API_TOKEN;
+  if (!expected) return null;
+  if (request.headers.get("authorization") !== `Bearer ${expected}`) return null;
+
+  const workspaceId = process.env.AUTOMATION_WORKSPACE_ID;
+  const membership = await prisma.workspaceMember.findFirst({
+    where: { role: "OWNER", ...(workspaceId ? { workspaceId } : {}) },
+    include: { workspace: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (!membership) return null;
+
+  return {
+    userId: membership.userId,
+    workspaceId: membership.workspaceId,
+    workspace: membership.workspace,
+    role: membership.role,
+  };
+}
+
 export async function getCurrentWorkspaceContext(): Promise<WorkspaceContext | null> {
   const userId = await getCurrentUserId();
   if (!userId) return null;
