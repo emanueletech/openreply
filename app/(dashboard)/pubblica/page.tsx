@@ -16,7 +16,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const MEMORIA = "pubblica:ultimi-valori";
+const RUBRICA = "pubblica:gia-usati";
 const RICORDATI = ["filamento", "stampante", "plate"] as const;
+const MAX_RUBRICA = 8;
 
 const INPUT =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-zinc-500 focus:border-accent/40 focus:outline-none";
@@ -48,6 +50,8 @@ export default function PubblicaPage() {
   const [errore, setErrore] = useState<string | null>(null);
   const [anteprima, setAnteprima] = useState<Record<string, string> | null>(null);
   const [generando, setGenerando] = useState(false);
+  const [rubrica, setRubrica] = useState<Record<string, string[]>>({});
+  const [marchi, setMarchi] = useState<string[]>([]);
   const [canale, setCanale] = useState<"IG" | "TIKTOK" | "YT">("IG");
   const attesaAnteprima = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -73,8 +77,19 @@ export default function PubblicaPage() {
     // primo uso su un dispositivo nuovo i campi non sono vuoti.
     fetch("/api/pubblica?config=1", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && compila(d))
-      .catch(() => {});
+      .then((d) => {
+        if (!d) return;
+        compila(d);
+        setMarchi(String(d.marchi || "").split(/\s+/).filter(Boolean));
+      })
+      .catch(() => {})
+      .finally(() => {
+        try {
+          setRubrica(JSON.parse(localStorage.getItem(RUBRICA) || "{}"));
+        } catch {
+          // rubrica illeggibile: restano i suggerimenti che arrivano dal servizio
+        }
+      });
   }, []);
 
   useEffect(() => () => {
@@ -160,8 +175,20 @@ export default function PubblicaPage() {
     const corpo = new FormData(e.currentTarget);
 
     const memoria: Record<string, string> = {};
-    for (const chiave of RICORDATI) memoria[chiave] = String(corpo.get(chiave) ?? "");
+    const nuovaRubrica: Record<string, string[]> = { ...rubrica };
+    for (const chiave of RICORDATI) {
+      const valore = String(corpo.get(chiave) ?? "").trim();
+      memoria[chiave] = valore;
+      if (valore) {
+        // La rubrica tiene i valori già usati, non solo l'ultimo: i marchi
+        // ruotano, e riscrivere una menzione a memoria è come sbagliarla.
+        const usati = (nuovaRubrica[chiave] || []).filter((v) => v !== valore);
+        nuovaRubrica[chiave] = [valore, ...usati].slice(0, MAX_RUBRICA);
+      }
+    }
     localStorage.setItem(MEMORIA, JSON.stringify(memoria));
+    localStorage.setItem(RUBRICA, JSON.stringify(nuovaRubrica));
+    setRubrica(nuovaRubrica);
 
     // Un file input vuoto finisce comunque in FormData come file da 0 byte: va
     // tolto, altrimenti il servizio crede di aver ricevuto una copertina.
@@ -289,12 +316,20 @@ export default function PubblicaPage() {
             {RICORDATI.map((chiave) => (
               <div key={chiave} className="space-y-1">
                 <label className="text-sm font-medium capitalize">{chiave}</label>
-                <input name={chiave} className={INPUT} />
+                <input name={chiave} list={`suggerimenti-${chiave}`} className={INPUT} />
+                <datalist id={`suggerimenti-${chiave}`}>
+                  {[...(rubrica[chiave] || []), ...marchi].map((v) => (
+                    <option key={v} value={v} />
+                  ))}
+                </datalist>
               </div>
             ))}
             <p className="text-xs text-muted">
               Restano memorizzati su questo dispositivo e si ripresentano già
-              compilati la prossima volta.
+              compilati la prossima volta. Scrivendo compaiono i valori già usati
+              e i marchi che tagghi più spesso: Instagram non permette di cercare
+              i profili da fuori, quindi la rubrica è l&apos;unico modo per non
+              sbagliare una menzione a memoria.
             </p>
           </div>
         </details>
