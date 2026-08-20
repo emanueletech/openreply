@@ -9,6 +9,7 @@ import { buildReportUrl, generateReportShareSlug } from "@/lib/reports/share";
 import {
   canManageWorkspace,
   getCurrentWorkspaceContext,
+  getTokenWorkspaceContext,
 } from "@/lib/workspace-access";
 
 // This list is read-your-writes (created/imported campaigns must show up
@@ -276,7 +277,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const context = await getCurrentWorkspaceContext();
+  const context =
+    (await getTokenWorkspaceContext(request)) ??
+    (await getCurrentWorkspaceContext());
   if (!context) {
     return NextResponse.json(
       { success: false, error: "Unauthorized" },
