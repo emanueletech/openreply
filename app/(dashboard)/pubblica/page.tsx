@@ -46,20 +46,35 @@ export default function PubblicaPage() {
   const [invio, setInvio] = useState(false);
   const [job, setJob] = useState<Job | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
+  const [anteprima, setAnteprima] = useState<Record<string, string> | null>(null);
+  const [generando, setGenerando] = useState(false);
+  const [canale, setCanale] = useState<"IG" | "TIKTOK" | "YT">("IG");
+  const attesaAnteprima = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let salvati: Record<string, string> = {};
     try {
       salvati = JSON.parse(localStorage.getItem(MEMORIA) || "{}");
     } catch {
-      return; // memoria illeggibile: si riparte dai campi vuoti, non è un errore
+      salvati = {}; // memoria illeggibile: si ripiega sui default del servizio
     }
-    for (const chiave of RICORDATI) {
-      const campo = form.current?.elements.namedItem(chiave);
-      if (campo instanceof HTMLInputElement && salvati[chiave]) {
-        campo.value = salvati[chiave];
+
+    const compila = (valori: Record<string, string>) => {
+      for (const chiave of RICORDATI) {
+        const campo = form.current?.elements.namedItem(chiave);
+        if (campo instanceof HTMLInputElement && !campo.value && valori[chiave]) {
+          campo.value = valori[chiave];
+        }
       }
-    }
+    };
+
+    compila(salvati);
+    // Quello che non è memorizzato qui viene dai default di config.txt, così al
+    // primo uso su un dispositivo nuovo i campi non sono vuoti.
+    fetch("/api/pubblica?config=1", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && compila(d))
+      .catch(() => {});
   }, []);
 
   useEffect(() => () => {
@@ -84,6 +99,61 @@ export default function PubblicaPage() {
     };
     chiedi();
   }, []);
+
+  /** Ricalcola le caption mentre si scrive, senza pubblicare nulla. */
+  const chiediAnteprima = () => {
+    if (attesaAnteprima.current) clearTimeout(attesaAnteprima.current);
+    attesaAnteprima.current = setTimeout(async () => {
+      if (!form.current) return;
+      const corpo = new FormData(form.current);
+      corpo.delete("video");
+      corpo.delete("cover");
+      try {
+        const res = await fetch("/api/pubblica?anteprima=1", {
+          method: "POST",
+          body: corpo,
+        });
+        if (res.ok) setAnteprima(await res.json());
+      } catch {
+        // l'anteprima è un di più: se non arriva, il form resta usabile
+      }
+    }, 400);
+  };
+
+  useEffect(() => {
+    chiediAnteprima();
+    return () => {
+      if (attesaAnteprima.current) clearTimeout(attesaAnteprima.current);
+    };
+  }, []);
+
+  /** Fa scrivere a Claude la riga di descrizione e la mette nel campo. */
+  const generaDescrizione = async () => {
+    if (!form.current) return;
+    const dati = new FormData(form.current);
+    if (!String(dati.get("titolo") || "").trim()) {
+      setErrore("Serve almeno il titolo per far scrivere la descrizione");
+      return;
+    }
+    setErrore(null);
+    setGenerando(true);
+    try {
+      const corpo = new FormData();
+      for (const chiave of ["titolo", "note", "tempo", "filamento"]) {
+        corpo.append(chiave, String(dati.get(chiave) ?? ""));
+      }
+      const res = await fetch("/api/pubblica?genera=1", { method: "POST", body: corpo });
+      const risposta = await res.json();
+      if (!res.ok) throw new Error(risposta.detail || risposta.error || "Non riuscito");
+      const campo = form.current.elements.namedItem("descrizione");
+      if (campo instanceof HTMLTextAreaElement) campo.value = risposta.descrizione;
+      chiediAnteprima();
+    } catch (e) {
+      setErrore(e instanceof Error ? e.message : String(e));
+    } finally {
+      setGenerando(false);
+    }
+  };
 
   const invia = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -144,7 +214,12 @@ export default function PubblicaPage() {
         </p>
       </div>
 
-      <form ref={form} onSubmit={invia} className="space-y-4">
+      <form
+        ref={form}
+        onSubmit={invia}
+        onInput={chiediAnteprima}
+        className="space-y-4"
+      >
         <div className="space-y-1">
           <label className="text-sm font-medium">Video</label>
           <input type="file" name="video" accept="video/*" required className={INPUT} />
@@ -173,6 +248,32 @@ export default function PubblicaPage() {
         <div className="space-y-1">
           <label className="text-sm font-medium">Tempo di stampa</label>
           <input name="tempo" placeholder="3.8 hours" className={INPUT} />
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex items-center justify-between">
+            <label className="text-sm font-medium">Descrizione</label>
+            <button
+              type="button"
+              onClick={generaDescrizione}
+              disabled={generando}
+              className="rounded border border-border px-2 py-1 text-xs text-muted hover:text-foreground disabled:opacity-50"
+            >
+              {generando ? "Scrivo…" : "Scrivi con Claude"}
+            </button>
+          </div>
+          <textarea
+            name="descrizione"
+            rows={2}
+            placeholder="Una riga sul modello: cosa fa, come si muove, cos'è stato difficile"
+            className={INPUT}
+            onInput={chiediAnteprima}
+          />
+          <input
+            name="note"
+            placeholder="Per Claude: cosa si vede nel video (non finisce nella caption)"
+            className={INPUT}
+          />
         </div>
 
         <div className="space-y-1">
@@ -206,6 +307,38 @@ export default function PubblicaPage() {
           {lavorando ? "In corso…" : "Pubblica"}
         </button>
       </form>
+
+      {anteprima && (
+        <div className="space-y-2 rounded-lg border border-border p-4">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Come verrà</span>
+            <div className="ml-auto flex gap-1">
+              {(["IG", "TIKTOK", "YT"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCanale(c)}
+                  className={
+                    canale === c
+                      ? "rounded border border-accent/40 bg-accent/10 px-2 py-1 text-xs text-foreground"
+                      : "rounded border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
+                  }
+                >
+                  {c === "IG" ? "Instagram" : c === "TIKTOK" ? "TikTok" : "YouTube"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <pre className="whitespace-pre-wrap break-words text-sm text-muted">
+            {anteprima[canale]}
+          </pre>
+          <p className="text-xs text-muted">
+            {canale === "IG"
+              ? "La parola chiave compare solo qui: è questo commento che fa partire il DM."
+              : "Qui la parola chiave non c'è: chi commenta su questo canale non riceverebbe nulla."}
+          </p>
+        </div>
+      )}
 
       {invio && (
         <div className="space-y-1">
