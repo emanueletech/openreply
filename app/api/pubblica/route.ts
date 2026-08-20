@@ -35,8 +35,19 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Anteprima e generazione del testo sono la stessa chiamata multipart senza
+  // pubblicare nulla, quindi passano da qui con un parametro invece che da due
+  // route gemelle.
+  const parametri = request.nextUrl.searchParams;
+  const rotta =
+    parametri.get("anteprima") === "1"
+      ? "anteprima"
+      : parametri.get("genera") === "1"
+        ? "genera"
+        : "publish";
+
   try {
-    const risposta = await fetch(`${config.base}/publish`, {
+    const risposta = await fetch(`${config.base}/${rotta}`, {
       method: "POST",
       headers: {
         "content-type": request.headers.get("content-type") ?? "",
@@ -79,18 +90,23 @@ export async function GET(request: NextRequest) {
   }
 
   const job = request.nextUrl.searchParams.get("job");
-  if (!job) {
+  const vuoleConfig = request.nextUrl.searchParams.get("config") === "1";
+  if (!job && !vuoleConfig) {
     return NextResponse.json(
       { success: false, error: "Manca l'id del job" },
       { status: 400 }
     );
   }
 
+  const percorso = vuoleConfig
+    ? "/config"
+    : `/jobs/${encodeURIComponent(job as string)}`;
+
   try {
-    const risposta = await fetch(
-      `${config.base}/jobs/${encodeURIComponent(job)}`,
-      { headers: { "X-Poster-Token": config.token }, cache: "no-store" }
-    );
+    const risposta = await fetch(`${config.base}${percorso}`, {
+      headers: { "X-Poster-Token": config.token },
+      cache: "no-store",
+    });
     const testo = await risposta.text();
     return new NextResponse(testo, {
       status: risposta.status,
