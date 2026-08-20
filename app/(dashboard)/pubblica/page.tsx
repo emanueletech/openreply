@@ -154,14 +154,25 @@ export default function PubblicaPage() {
     setGenerando(true);
     try {
       const corpo = new FormData();
-      for (const chiave of ["titolo", "note", "tempo", "filamento"]) {
+      for (const chiave of ["titolo", "note", "tempo", "filamento", "link"]) {
         corpo.append(chiave, String(dati.get(chiave) ?? ""));
       }
       const res = await fetch("/api/pubblica?genera=1", { method: "POST", body: corpo });
       const risposta = await res.json();
       if (!res.ok) throw new Error(risposta.detail || risposta.error || "Non riuscito");
+
       const campo = form.current.elements.namedItem("descrizione");
       if (campo instanceof HTMLTextAreaElement) campo.value = risposta.descrizione;
+      // La keyword proposta non sovrascrive quella scritta a mano: se hai già
+      // deciso la parola, quella comanda.
+      const campoKeyword = form.current.elements.namedItem("keyword");
+      if (
+        campoKeyword instanceof HTMLInputElement &&
+        !campoKeyword.value.trim() &&
+        risposta.keyword
+      ) {
+        campoKeyword.value = risposta.keyword;
+      }
       chiediAnteprima();
     } catch (e) {
       setErrore(e instanceof Error ? e.message : String(e));
@@ -286,7 +297,7 @@ export default function PubblicaPage() {
               disabled={generando}
               className="rounded border border-border px-2 py-1 text-xs text-muted hover:text-foreground disabled:opacity-50"
             >
-              {generando ? "Scrivo…" : "Scrivi con Claude"}
+              {generando ? "Scrivo…" : "Scrivi con Claude (anche la parola)"}
             </button>
           </div>
           <textarea
