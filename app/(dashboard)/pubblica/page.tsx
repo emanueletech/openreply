@@ -52,6 +52,8 @@ export default function PubblicaPage() {
   const [generando, setGenerando] = useState(false);
   const [rubrica, setRubrica] = useState<Record<string, string[]>>({});
   const [marchi, setMarchi] = useState<string[]>([]);
+  const [quando, setQuando] = useState<"subito" | "data" | "coda">("subito");
+  const [dataOra, setDataOra] = useState("");
   const [canale, setCanale] = useState<"IG" | "TIKTOK" | "YT">("IG");
   const attesaAnteprima = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -206,6 +208,18 @@ export default function PubblicaPage() {
     const cover = corpo.get("cover");
     if (cover instanceof File && cover.size === 0) corpo.delete("cover");
 
+    // "coda" = campo vuoto, ed è Buffer a scegliere lo slot per ogni canale.
+    // La data arriva dal browser nel fuso locale: il servizio la vuole in UTC.
+    if (quando === "subito") {
+      corpo.set("quando", "subito");
+    } else if (quando === "data") {
+      if (!dataOra) {
+        setErrore("Scegli data e ora, oppure passa a Subito o In coda");
+        return;
+      }
+      corpo.set("quando", new Date(dataOra).toISOString());
+    }
+
     setErrore(null);
     setJob(null);
     setInvio(true);
@@ -345,12 +359,53 @@ export default function PubblicaPage() {
           </div>
         </details>
 
+        <div className="space-y-2 rounded-lg border border-border px-3 py-2.5">
+          <span className="text-sm font-medium">Quando</span>
+          <div className="flex gap-1">
+            {(
+              [
+                ["subito", "Subito"],
+                ["data", "Data e ora"],
+                ["coda", "In coda"],
+              ] as const
+            ).map(([valore, etichetta]) => (
+              <button
+                key={valore}
+                type="button"
+                onClick={() => setQuando(valore)}
+                className={
+                  quando === valore
+                    ? "flex-1 rounded border border-accent/40 bg-accent/10 px-2 py-1.5 text-xs text-foreground"
+                    : "flex-1 rounded border border-border px-2 py-1.5 text-xs text-muted hover:text-foreground"
+                }
+              >
+                {etichetta}
+              </button>
+            ))}
+          </div>
+
+          {quando === "data" && (
+            <input
+              type="datetime-local"
+              value={dataOra}
+              onChange={(e) => setDataOra(e.target.value)}
+              className={INPUT}
+            />
+          )}
+
+          <p className="text-xs text-muted">
+            {quando === "coda"
+              ? "Ogni canale prende il primo slot libero della sua programmazione Buffer, quindi i tre post escono a orari diversi."
+              : "Stessa ora su Instagram, TikTok e YouTube."}
+          </p>
+        </div>
+
         <button
           type="submit"
           disabled={lavorando}
           className="w-full rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-white hover:bg-accent-hover disabled:opacity-50"
         >
-          {lavorando ? "In corso…" : "Pubblica"}
+          {lavorando ? "In corso…" : quando === "subito" ? "Pubblica ora" : "Pubblica"}
         </button>
       </form>
 
