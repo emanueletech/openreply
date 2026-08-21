@@ -1,0 +1,119 @@
+# OpenReply in self-hosting sul NAS UGREEN.
+# Web + worker + Postgres + Redis dedicati, esposti su internet da Tailscale Funnel
+# (HTTPS con certificato valido, nessun dominio da acquistare, nessuna porta aperta sul router).
+#
+# Postgres e Redis restano sulla rete interna del compose: non pubblicano nulla sull'host,
+# cosi' non toccano il Postgres/Redis di UGOS gia' in ascolto su 5432/6379.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: openreply-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: openreply
+      POSTGRES_USER: openreply
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openreply -d openreply"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: openreply-redis
+    restart: unless-stopped
+    # appendonly: la coda BullMQ sopravvive a un riavvio del NAS
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build:
+      context: ./repo
+      dockerfile: Dockerfile
+    image: openreply-app:local
+    container_name: openreply-web
+    restart: unless-stopped
+    env_file: .env
+    # Le migrazioni girano qui, non nel build: al build il DB non e' raggiungibile.
+    command: ["sh", "-c", "npx prisma migrate deploy && npm start"]
+    ports:
+      # solo loopback del NAS: l'accesso da fuori passa dal Funnel
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://127.0.0.1:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  cron:
+    # I job di /api/cron sono schedulati solo in vercel.json, che fuori da Vercel
+    # non legge nessuno: senza questo container non li chiamerebbe niente, e
+    # refresh-tokens fermo fa scadere il token Instagram senza un errore.
+    # Stessa immagine del web, comando diverso (come il worker).
+    image: openreply-app:local
+    container_name: openreply-cron
+    restart: unless-stopped
+    env_file: .env
+    command: ["sh", "scripts/cron.sh"]
+    depends_on:
+      # service_healthy e non service_started: partendo insieme al web il primo
+      # giro cadeva su "connection refused" mentre Next stava ancora salendo.
+      web:
+        condition: service_healthy
+
+  worker:
+    # riusa l'immagine gia' costruita per il web: stesso codice, comando diverso
+    image: openreply-app:local
+    container_name: openreply-worker
+    restart: unless-stopped
+    env_file: .env
+    command: ["npm", "run", "worker"]
+    depends_on:
+      web:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: openreply-tailscale
+    restart: unless-stopped
+    hostname: openreply
+    environment:
+      # auth key riutilizzabile generata dalla console Tailscale: senza, il container
+      # stampa un link di login che scade dopo pochi minuti e riparte in loop
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_HOSTNAME: openreply
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_AUTH_ONCE: "true"
+      TS_USERSPACE: "true"
+      # serve.json va montato come DIRECTORY, altrimenti Tailscale non rileva le modifiche
+      TS_SERVE_CONFIG: /config/serve.json
+    volumes:
+      - tsstate:/var/lib/tailscale
+      - ./ts-config:/config
+    depends_on:
+      - web
+
+volumes:
+  pgdata:
+  redisdata:
+  tsstate:
