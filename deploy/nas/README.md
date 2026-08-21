@@ -21,7 +21,9 @@ cifrato, quindi un ripristino *senza quella chiave* restituisce un database in c
 Instagram non funziona più e va riconnesso da capo via OAuth. Un backup del database senza
 `ENCRYPTION_KEY` è un backup incompleto.
 
-Copia cifrata del `.env` fuori dal NAS: vedi la sezione "Backup" nel `CLAUDE.md` del progetto.
+Il `.env` va quindi tenuto in una copia cifrata **fuori dal NAS** (archivio AES-256 su un
+servizio cloud), insieme al `Dockerfile` e al compose qui sopra. La password va nel gestore di
+password: senza, l'archivio non serve a niente.
 
 ## Ricostruire lo stack da zero
 
