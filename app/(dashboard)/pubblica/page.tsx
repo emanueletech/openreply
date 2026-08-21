@@ -144,7 +144,7 @@ export default function PubblicaPage() {
     };
   }, []);
 
-  /** Fa scrivere a Claude la riga di descrizione e la mette nel campo. */
+  /** Fa generare al servizio la riga di descrizione e la keyword. */
   const generaDescrizione = async () => {
     if (!form.current) return;
     const dati = new FormData(form.current);
@@ -311,7 +311,7 @@ export default function PubblicaPage() {
               disabled={generando}
               className="rounded border border-border px-2 py-1 text-xs text-muted hover:text-foreground disabled:opacity-50"
             >
-              {generando ? "Scrivo…" : "Scrivi con Claude (anche la parola)"}
+              {generando ? "Scrivo…" : "Genera descrizione e parola"}
             </button>
           </div>
           <textarea
@@ -323,7 +323,7 @@ export default function PubblicaPage() {
           />
           <input
             name="note"
-            placeholder="Per Claude: cosa si vede nel video (non finisce nella caption)"
+            placeholder="Cosa si vede nel video: serve solo a generare il testo, non finisce nella caption"
             className={INPUT}
           />
         </div>
