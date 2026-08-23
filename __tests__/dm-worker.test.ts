@@ -129,6 +129,7 @@ vi.mock("bullmq", () => {
 });
 
 import { createDMWorker } from "../lib/queue/dm-worker";
+import { DEFAULT_FOLLOW_BUTTON_LABEL } from "../lib/defaults";
 
 const usagePeriodStart = new Date("2026-05-01T00:00:00.000Z");
 
@@ -1056,7 +1057,8 @@ describe("DM Worker — DM keyword trigger", () => {
       "ig_456",
       "commenter_999",
       expect.any(String),
-      "I'm following ✅",
+      // Nessuna etichetta sull'automazione: vale il default condiviso.
+      DEFAULT_FOLLOW_BUTTON_LABEL,
       "followcheck:auto_789"
     );
     expect(mockSendDirectMessage).not.toHaveBeenCalled();
