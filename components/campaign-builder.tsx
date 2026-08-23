@@ -19,6 +19,7 @@ import PostPicker from "@/components/post-picker";
 import CampaignPreview, { type PreviewTab } from "@/components/campaign-preview";
 import { FrasiPronte } from "@/components/frasi-pronte";
 import { readCache, writeCache } from "@/lib/client-cache";
+import { DEFAULT_FOLLOW_BUTTON_LABEL } from "@/lib/defaults";
 import {
   IMPORT_QUEUE_KEY,
   IMPORT_ACCOUNT_KEY,
@@ -176,8 +177,9 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
   const [secondaryButtonLabel, setSecondaryButtonLabel] = useState("Apri il link");
   const [requireFollow, setRequireFollow] = useState(false);
   const [followPromptMessage, setFollowPromptMessage] = useState("");
-  const [followPromptButtonLabel, setFollowPromptButtonLabel] =
-    useState("ti sto seguendo");
+  const [followPromptButtonLabel, setFollowPromptButtonLabel] = useState(
+    DEFAULT_FOLLOW_BUTTON_LABEL
+  );
   const [followUpEnabled, setFollowUpEnabled] = useState(false);
   const [followUpMessage, setFollowUpMessage] = useState("");
   const [followUpDelayMinutes, setFollowUpDelayMinutes] = useState(0);
@@ -284,7 +286,7 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
         setRequireFollow(c.requireFollow ?? false);
         setFollowPromptMessage(c.followPromptMessage ?? "");
         setFollowPromptButtonLabel(
-          c.followPromptButtonLabel ?? "ti sto seguendo"
+          c.followPromptButtonLabel ?? DEFAULT_FOLLOW_BUTTON_LABEL
         );
         setFollowUpEnabled(c.followUpEnabled ?? false);
         setFollowUpMessage(c.followUpMessage ?? "");
@@ -423,7 +425,7 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
       requireFollow,
       followPromptMessage: requireFollow ? followPromptMessage.trim() : "",
       followPromptButtonLabel: requireFollow
-        ? followPromptButtonLabel.trim() || "ti sto seguendo"
+        ? followPromptButtonLabel.trim() || DEFAULT_FOLLOW_BUTTON_LABEL
         : "",
       followUpEnabled,
       followUpMessage: followUpEnabled ? followUpMessage.trim() : "",
@@ -878,7 +880,7 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
                 <input
                   value={followPromptButtonLabel}
                   onChange={(e) => setFollowPromptButtonLabel(e.target.value)}
-                  placeholder="ti sto seguendo"
+                  placeholder={DEFAULT_FOLLOW_BUTTON_LABEL}
                   className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-zinc-500 focus:border-accent/40 focus:outline-none"
                   maxLength={20}
                 />
@@ -1049,7 +1051,9 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
             secondLinkButtonLabel={secondaryButtonLabel || "Apri il link"}
             requireFollow={requireFollow}
             followPromptMessage={followPromptMessage}
-            followPromptButtonLabel={followPromptButtonLabel || "ti sto seguendo"}
+            followPromptButtonLabel={
+              followPromptButtonLabel || DEFAULT_FOLLOW_BUTTON_LABEL
+            }
             followUpEnabled={followUpEnabled}
             followUpMessage={followUpMessage}
             followUpDelayMinutes={followUpDelayMinutes}

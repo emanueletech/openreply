@@ -27,6 +27,7 @@ import {
 } from "@/lib/meta/client";
 import { decryptToken } from "@/lib/meta/oauth";
 import { matchKeywords } from "@/lib/utils/keyword-matcher";
+import { DEFAULT_FOLLOW_BUTTON_LABEL } from "@/lib/defaults";
 import {
   isLang,
   languageForKeyword,
@@ -616,7 +617,7 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
           commentId,
           promptText,
           pickLabel(automation.followPromptButtonLabel, language) ||
-            "i'm following",
+            DEFAULT_FOLLOW_BUTTON_LABEL,
           withLanguage(`followcheck:${automation.id}`, language)
         );
       } else if (automation.trackedLinks.length > 0) {
@@ -816,7 +817,7 @@ async function processPostback(job: Job<ProcessPostbackJob>): Promise<void> {
           userId,
           promptText,
           pickLabel(automation.followPromptButtonLabel, language) ||
-            "i'm following",
+            DEFAULT_FOLLOW_BUTTON_LABEL,
           withLanguage(`followcheck:${automation.id}`, language)
         );
       } catch (error) {
@@ -1160,7 +1161,7 @@ async function processMessage(job: Job<ProcessMessageJob>): Promise<void> {
           senderId,
           promptText,
           pickLabel(automation.followPromptButtonLabel, language) ||
-            "I'm following ✅",
+            DEFAULT_FOLLOW_BUTTON_LABEL,
           withLanguage(`followcheck:${automation.id}`, language)
         );
       } else {
