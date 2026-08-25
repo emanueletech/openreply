@@ -17,8 +17,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const MEMORIA = "pubblica:ultimi-valori";
 const RUBRICA = "pubblica:gia-usati";
-const RICORDATI = ["filamento", "stampante", "plate"] as const;
+const INCLUSI = "pubblica:righe-incluse";
+const JOB_IN_CORSO = "pubblica:job-in-corso";
+const RICORDATI = ["filamento", "stampante", "plate", "extra"] as const;
 const MAX_RUBRICA = 8;
+
+/** `extra` è una riga libera: esce nella caption esattamente com'è scritta. */
+const ETICHETTE: Record<(typeof RICORDATI)[number], string> = {
+  filamento: "Filamento",
+  stampante: "Stampante",
+  plate: "Piatto",
+  extra: "Riga libera",
+};
 
 const INPUT =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-zinc-500 focus:border-accent/40 focus:outline-none";
@@ -49,13 +59,22 @@ export default function PubblicaPage() {
   const [job, setJob] = useState<Job | null>(null);
   const [errore, setErrore] = useState<string | null>(null);
   const [anteprima, setAnteprima] = useState<Record<string, string> | null>(null);
-  const [generando, setGenerando] = useState(false);
+  // Caption riscritte a mano, per canale. Una volta toccata, la caption non
+  // viene più rigenerata: sarebbe sgradevole veder sparire ciò che hai scritto
+  // solo perché hai corretto il tempo di stampa.
+  const [riscritte, setRiscritte] = useState<Record<string, string>>({});
   const [rubrica, setRubrica] = useState<Record<string, string[]>>({});
   const [marchi, setMarchi] = useState<string[]>([]);
   const [quando, setQuando] = useState<"subito" | "data" | "coda">("subito");
   const [dataOra, setDataOra] = useState("");
   const [canale, setCanale] = useState<"IG" | "TIKTOK" | "YT">("IG");
+  const [inclusi, setInclusi] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(RICORDATI.map((c) => [c, c !== "extra"]))
+  );
   const attesaAnteprima = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** I campi che l'utente ha deselezionato, come li vuole il servizio. */
+  const campiEsclusi = () => RICORDATI.filter((c) => !inclusi[c]).join(",");
 
   useEffect(() => {
     let salvati: Record<string, string> = {};
@@ -91,6 +110,12 @@ export default function PubblicaPage() {
         } catch {
           // rubrica illeggibile: restano i suggerimenti che arrivano dal servizio
         }
+        try {
+          const spunte = JSON.parse(localStorage.getItem(INCLUSI) || "null");
+          if (spunte) setInclusi((precedenti) => ({ ...precedenti, ...spunte }));
+        } catch {
+          // spunte illeggibili: tutto incluso tranne la riga libera, come al primo uso
+        }
       });
   }, []);
 
@@ -98,17 +123,37 @@ export default function PubblicaPage() {
     if (timer.current) clearTimeout(timer.current);
   }, []);
 
+  /** Durante l'upload il browser chiede conferma prima di lasciare la pagina. */
+  useEffect(() => {
+    if (!invio) return;
+    const avvisa = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", avvisa);
+    return () => window.removeEventListener("beforeunload", avvisa);
+  }, [invio]);
+
   const seguiJob = useCallback((id: string) => {
+    // Il job vive sul servizio, non qui: se iOS scarica la pagina durante un
+    // encode lungo, al rientro basta l'id per riagganciarsi invece di credere
+    // che la pubblicazione sia andata persa.
+    localStorage.setItem(JOB_IN_CORSO, id);
     const chiedi = async () => {
       try {
         const res = await fetch(`/api/pubblica?job=${encodeURIComponent(id)}`, {
           cache: "no-store",
         });
         const dati = await res.json();
+        if (res.status === 404) {
+          // Job ripulito dal servizio: senza questo, all'apertura successiva
+          // resterebbe un avanzamento che non avanza mai.
+          localStorage.removeItem(JOB_IN_CORSO);
+          return;
+        }
         if (!res.ok) throw new Error(dati.error || "Stato non disponibile");
         setJob(dati);
         if (dati.stato !== "fatto" && dati.stato !== "errore") {
           timer.current = setTimeout(chiedi, 2000);
+        } else {
+          localStorage.removeItem(JOB_IN_CORSO);
         }
       } catch (e) {
         setErrore(e instanceof Error ? e.message : String(e));
@@ -116,6 +161,12 @@ export default function PubblicaPage() {
     };
     chiedi();
   }, []);
+
+  /** Un job lasciato a metà da una visita precedente si riprende da solo. */
+  useEffect(() => {
+    const rimasto = localStorage.getItem(JOB_IN_CORSO);
+    if (rimasto) seguiJob(rimasto);
+  }, [seguiJob]);
 
   /** Ricalcola le caption mentre si scrive, senza pubblicare nulla. */
   const chiediAnteprima = () => {
@@ -125,6 +176,7 @@ export default function PubblicaPage() {
       const corpo = new FormData(form.current);
       corpo.delete("video");
       corpo.delete("cover");
+      corpo.set("escludi", campiEsclusi());
       try {
         const res = await fetch("/api/pubblica?anteprima=1", {
           method: "POST",
@@ -142,46 +194,10 @@ export default function PubblicaPage() {
     return () => {
       if (attesaAnteprima.current) clearTimeout(attesaAnteprima.current);
     };
-  }, []);
-
-  /** Fa generare al servizio la riga di descrizione e la keyword. */
-  const generaDescrizione = async () => {
-    if (!form.current) return;
-    const dati = new FormData(form.current);
-    if (!String(dati.get("titolo") || "").trim()) {
-      setErrore("Serve almeno il titolo per far scrivere la descrizione");
-      return;
-    }
-    setErrore(null);
-    setGenerando(true);
-    try {
-      const corpo = new FormData();
-      for (const chiave of ["titolo", "note", "tempo", "filamento", "link"]) {
-        corpo.append(chiave, String(dati.get(chiave) ?? ""));
-      }
-      const res = await fetch("/api/pubblica?genera=1", { method: "POST", body: corpo });
-      const risposta = await res.json();
-      if (!res.ok) throw new Error(risposta.detail || risposta.error || "Non riuscito");
-
-      const campo = form.current.elements.namedItem("descrizione");
-      if (campo instanceof HTMLTextAreaElement) campo.value = risposta.descrizione;
-      // La keyword proposta non sovrascrive quella scritta a mano: se hai già
-      // deciso la parola, quella comanda.
-      const campoKeyword = form.current.elements.namedItem("keyword");
-      if (
-        campoKeyword instanceof HTMLInputElement &&
-        !campoKeyword.value.trim() &&
-        risposta.keyword
-      ) {
-        campoKeyword.value = risposta.keyword;
-      }
-      chiediAnteprima();
-    } catch (e) {
-      setErrore(e instanceof Error ? e.message : String(e));
-    } finally {
-      setGenerando(false);
-    }
-  };
+    // Anche al cambio delle spunte: l'anteprima deve mostrare la caption senza
+    // le righe tolte, altrimenti la spunta sembra non fare niente.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inclusi]);
 
   const invia = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -190,7 +206,11 @@ export default function PubblicaPage() {
     const memoria: Record<string, string> = {};
     const nuovaRubrica: Record<string, string[]> = { ...rubrica };
     for (const chiave of RICORDATI) {
-      const valore = String(corpo.get(chiave) ?? "").trim();
+      // Dal DOM e non da FormData: un campo deselezionato è `disabled`, quindi
+      // in FormData non c'è — e la memoria si svuoterebbe a ogni pubblicazione.
+      const campo = e.currentTarget.elements.namedItem(chiave);
+      const valore =
+        campo instanceof HTMLInputElement ? campo.value.trim() : "";
       memoria[chiave] = valore;
       if (valore) {
         // La rubrica tiene i valori già usati, non solo l'ultimo: i marchi
@@ -201,7 +221,22 @@ export default function PubblicaPage() {
     }
     localStorage.setItem(MEMORIA, JSON.stringify(memoria));
     localStorage.setItem(RUBRICA, JSON.stringify(nuovaRubrica));
+    localStorage.setItem(INCLUSI, JSON.stringify(inclusi));
     setRubrica(nuovaRubrica);
+
+    // Una riga tolta va detta al servizio: lasciarla fuori e basta la farebbe
+    // ricadere sul default di config.txt, che è il contrario di toglierla.
+    corpo.set("escludi", campiEsclusi());
+
+    // Solo le caption davvero riscritte: le altre le costruisce il servizio dal
+    // template, come sempre.
+    for (const [sigla, campo] of [
+      ["IG", "caption_ig"],
+      ["TIKTOK", "caption_tiktok"],
+      ["YT", "caption_yt"],
+    ] as const) {
+      if (riscritte[sigla] !== undefined) corpo.set(campo, riscritte[sigla]);
+    }
 
     // Un file input vuoto finisce comunque in FormData come file da 0 byte: va
     // tolto, altrimenti il servizio crede di aver ricevuto una copertina.
@@ -303,17 +338,7 @@ export default function PubblicaPage() {
         </div>
 
         <div className="space-y-1">
-          <div className="flex items-center justify-between">
-            <label className="text-sm font-medium">Descrizione</label>
-            <button
-              type="button"
-              onClick={generaDescrizione}
-              disabled={generando}
-              className="rounded border border-border px-2 py-1 text-xs text-muted hover:text-foreground disabled:opacity-50"
-            >
-              {generando ? "Scrivo…" : "Genera descrizione e parola"}
-            </button>
-          </div>
+          <label className="text-sm font-medium">Descrizione</label>
           <textarea
             name="descrizione"
             rows={2}
@@ -321,11 +346,10 @@ export default function PubblicaPage() {
             className={INPUT}
             onInput={chiediAnteprima}
           />
-          <input
-            name="note"
-            placeholder="Cosa si vede nel video: serve solo a generare il testo, non finisce nella caption"
-            className={INPUT}
-          />
+          <p className="text-xs text-muted">
+            Finisce sotto il titolo. Se preferisci, lasciala vuota e scrivi
+            direttamente nella caption qui sotto: quella comanda.
+          </p>
         </div>
 
         <div className="space-y-1">
@@ -335,13 +359,37 @@ export default function PubblicaPage() {
 
         <details className="rounded-lg border border-border px-3 py-2">
           <summary className="cursor-pointer text-sm text-muted">
-            Filamento, stampante e piatto
+            Righe della scheda ({RICORDATI.filter((c) => inclusi[c]).length} su{" "}
+            {RICORDATI.length})
           </summary>
           <div className="mt-3 space-y-3">
             {RICORDATI.map((chiave) => (
               <div key={chiave} className="space-y-1">
-                <label className="text-sm font-medium capitalize">{chiave}</label>
-                <input name={chiave} list={`suggerimenti-${chiave}`} className={INPUT} />
+                <label className="flex items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    checked={inclusi[chiave] ?? true}
+                    onChange={(e) => {
+                      const agg = { ...inclusi, [chiave]: e.target.checked };
+                      setInclusi(agg);
+                      localStorage.setItem(INCLUSI, JSON.stringify(agg));
+                    }}
+                    className="h-4 w-4 accent-accent"
+                  />
+                  {ETICHETTE[chiave]}
+                </label>
+                <input
+                  name={chiave}
+                  list={`suggerimenti-${chiave}`}
+                  disabled={!(inclusi[chiave] ?? true)}
+                  placeholder={
+                    chiave === "extra"
+                      ? "Una riga in più, con la sua emoji: 🔩 Nozzle: 0.4 mm"
+                      : undefined
+                  }
+                  onChange={chiediAnteprima}
+                  className={`${INPUT} disabled:opacity-40`}
+                />
                 <datalist id={`suggerimenti-${chiave}`}>
                   {[...(rubrica[chiave] || []), ...marchi].map((v) => (
                     <option key={v} value={v} />
@@ -350,11 +398,14 @@ export default function PubblicaPage() {
               </div>
             ))}
             <p className="text-xs text-muted">
-              Restano memorizzati su questo dispositivo e si ripresentano già
-              compilati la prossima volta. Scrivendo compaiono i valori già usati
-              e i marchi che tagghi più spesso: Instagram non permette di cercare
-              i profili da fuori, quindi la rubrica è l&apos;unico modo per non
-              sbagliare una menzione a memoria.
+              La spunta decide se la riga esce nella caption: toglierla la fa
+              sparire davvero, senza far ricomparire il valore di default. I
+              valori restano memorizzati su questo dispositivo e si ripresentano
+              già compilati la prossima volta, spunta compresa. Scrivendo
+              compaiono i valori già usati e i marchi che tagghi più spesso:
+              Instagram non permette di cercare i profili da fuori, quindi la
+              rubrica è l&apos;unico modo per non sbagliare una menzione a
+              memoria.
             </p>
           </div>
         </details>
@@ -430,14 +481,42 @@ export default function PubblicaPage() {
               ))}
             </div>
           </div>
-          <pre className="whitespace-pre-wrap break-words text-sm text-muted">
-            {anteprima[canale]}
-          </pre>
-          <p className="text-xs text-muted">
-            {canale === "IG"
-              ? "La parola chiave compare solo qui: è questo commento che fa partire il DM."
-              : "Qui la parola chiave non c'è: chi commenta su questo canale non riceverebbe nulla."}
-          </p>
+          <textarea
+            value={riscritte[canale] ?? anteprima[canale] ?? ""}
+            onChange={(e) =>
+              setRiscritte({ ...riscritte, [canale]: e.target.value })
+            }
+            rows={14}
+            spellCheck={false}
+            className={`${INPUT} font-mono text-[13px] leading-snug`}
+          />
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted">
+              {canale === "IG"
+                ? "La parola chiave compare solo qui: è questo commento che fa partire il DM."
+                : canale === "YT"
+                  ? "Su YouTube la prima riga diventa il titolo del video: se la riscrivi, tienila come titolo."
+                  : "Qui la parola chiave non c'è: chi commenta su questo canale non riceverebbe nulla."}
+            </p>
+            {riscritte[canale] !== undefined && (
+              <button
+                type="button"
+                onClick={() => {
+                  const resto = { ...riscritte };
+                  delete resto[canale];
+                  setRiscritte(resto);
+                }}
+                className="shrink-0 rounded border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
+              >
+                Rigenera
+              </button>
+            )}
+          </div>
+          {riscritte[canale] !== undefined && (
+            <p className="text-xs text-accent">
+              Scritta a mano: da qui in poi i campi qui sopra non la toccano più.
+            </p>
+          )}
         </div>
       )}
 
@@ -450,6 +529,11 @@ export default function PubblicaPage() {
             />
           </div>
           <p className="text-xs text-muted">Carico il video: {caricamento}%</p>
+          <p className="text-xs text-muted">
+            Resta su questa schermata finché la barra non è piena: il
+            caricamento è l&apos;unico passo che non si può riprendere. Dopo,
+            il lavoro prosegue sul server e puoi tornare quando vuoi.
+          </p>
         </div>
       )}
 
