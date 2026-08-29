@@ -94,6 +94,7 @@ Copy `.env.example` to `.env` for local work, or set these in Vercel and Railway
 | `REDIS_URL` | Redis connection string. Must support blocking commands, so an HTTP-only Redis will not work with BullMQ. |
 | `RESEND_API_KEY` | Resend key. Login is email magic links only, so without this nobody can sign in. |
 | `EMAIL_FROM` | A sender on a domain you verified in Resend. The placeholder will not deliver. |
+| `ALLOWED_EMAILS` | Optional. Comma-separated allowlist of addresses that may sign in, case insensitive. Unset, anyone who reaches your public URL can request a magic link and gets their own workspace, which is worth closing on an instance you run for yourself. |
 | `EMAIL_SERVER` | Optional. An SMTP URL, for example `smtps://login%40example.com:password@mail.example.com:465`. Set it to send magic links through your own mail server instead of Resend; then `RESEND_API_KEY` is not needed. URL-encode special characters in the user and password (`@` becomes `%40`). Port 465 with `smtps://` is implicit TLS, port 587 with `smtp://` is STARTTLS. |
 | `META_GRAPH_API_VERSION` | Graph API version, for example `v25.0`. |
 | `INSTAGRAM_APP_ID` | From the Meta app, see Step 6. |
@@ -176,7 +177,9 @@ Still in the Instagram product, find the Configure webhooks step.
 - Callback URL: `https://your-app.vercel.app/api/webhook`
 - Verify token: the value of `WEBHOOK_VERIFY_TOKEN` from your environment
 - Click Verify and save. It should succeed immediately, because the app answers Meta's verification challenge. If the button is greyed out, click into the verify-token field and paste the token again; editing the callback URL often clears it.
-- Subscribe to the `comments` field.
+- Subscribe to the `comments` field, and to `messages` as well.
+
+Both fields matter. `comments` carries comment-to-DM, which is what most people come here for. `messages` carries inbound DMs and Story replies, which is what a campaign's "also reply when someone DMs these words" toggle runs on. Subscribe to `comments` alone and that toggle looks enabled but never fires, because the events it needs are never delivered.
 
 To test delivery without a real comment, click Test next to `comments`, then click Send to My Server. This is a two-step control. Clicking Test only previews the sample payload; the second button is what actually POSTs it to your endpoint. After sending, a row should appear in your `WebhookEvent` table.
 
