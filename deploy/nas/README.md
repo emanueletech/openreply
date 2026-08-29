@@ -5,9 +5,21 @@ quella cartella si fosse persa, l'immagine e lo stack andavano ricostruiti a mem
 
 | File | Dove va sul NAS |
 |---|---|
-| `Dockerfile` | `/volume1/docker/openreply/repo/Dockerfile` — immagine unica per web e worker |
 | `docker-compose.yaml` | `/volume1/docker/openreply/docker-compose.yaml` — **è il file che Compose legge**, un `.yml` accanto verrebbe ignorato in silenzio |
 | `ts-serve.json` | `/volume1/docker/openreply/ts-config/serve.json` — configurazione del Funnel |
+
+Il `Dockerfile` **non è più qui**: dal 29/08/2026 l'upstream ne pubblica uno alla radice del
+repo ([#35](https://github.com/diwenne/openreply/pull/35)), pensato proprio per il self-hosting
+— multi-stage, con `wget` e `scripts/` per il servizio cron. Si usa quello: una copia locale
+divergente costerebbe un conflitto a ogni merge senza dare nulla in cambio.
+
+Prima di adottarlo è stato provato sul NAS senza toccare la produzione (build in `repo-test`,
+poi immagine `openreply-app:test`): Node 20.20, `wget` presente, `scripts/cron.sh` a bordo e
+alias `@/…` risolti da `tsx`, che è il punto dove il worker si romperebbe.
+
+L'unica cosa che quel Dockerfile non fa è impostare il fuso: la vecchia immagine aveva
+`TZ=Europe/Rome` cucito dentro. Ora **il fuso lo passa il compose** (`TZ` fra le `environment`
+dei servizi), verificato che l'immagine lo rispetti.
 
 Questi file **non contengono segreti**: i valori arrivano tutti da `.env`, che resta fuori dal repo
 (vedi `.env.example` per l'elenco e a cosa serve ciascuna variabile).
