@@ -42,6 +42,9 @@ services:
       dockerfile: Dockerfile
     image: openreply-app:local
     container_name: openreply-web
+    environment:
+      # la nuova immagine upstream non cuce dentro il fuso: lo passiamo qui
+      TZ: Europe/Rome
     restart: unless-stopped
     env_file: .env
     # Le migrazioni girano qui, non nel build: al build il DB non e' raggiungibile.
@@ -61,6 +64,22 @@ services:
       retries: 5
       start_period: 60s
 
+  cloudflared:
+    # Tunnel verso Cloudflare: pubblica il servizio su link.printzone3d.com senza
+    # aprire porte sul router, come faceva il Funnel di Tailscale. Serve perche i
+    # domini *.ts.net sono bloccati da parecchi filtri DNS (il router di casa, la
+    # rete di un utente che non riusciva ad aprire il link): un dominio proprio no.
+    image: cloudflare/cloudflared:latest
+    container_name: openreply-cloudflared
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Rome
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    command: ["tunnel", "--no-autoupdate", "run"]
+    depends_on:
+      web:
+        condition: service_healthy
+
   cron:
     # I job di /api/cron sono schedulati solo in vercel.json, che fuori da Vercel
     # non legge nessuno: senza questo container non li chiamerebbe niente, e
@@ -68,6 +87,9 @@ services:
     # Stessa immagine del web, comando diverso (come il worker).
     image: openreply-app:local
     container_name: openreply-cron
+    environment:
+      # la nuova immagine upstream non cuce dentro il fuso: lo passiamo qui
+      TZ: Europe/Rome
     restart: unless-stopped
     env_file: .env
     command: ["sh", "scripts/cron.sh"]
@@ -81,6 +103,9 @@ services:
     # riusa l'immagine gia' costruita per il web: stesso codice, comando diverso
     image: openreply-app:local
     container_name: openreply-worker
+    environment:
+      # la nuova immagine upstream non cuce dentro il fuso: lo passiamo qui
+      TZ: Europe/Rome
     restart: unless-stopped
     env_file: .env
     command: ["npm", "run", "worker"]
