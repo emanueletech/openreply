@@ -6,7 +6,26 @@ quella cartella si fosse persa, l'immagine e lo stack andavano ricostruiti a mem
 | File | Dove va sul NAS |
 |---|---|
 | `docker-compose.yaml` | `/volume1/docker/openreply/docker-compose.yaml` — **è il file che Compose legge**, un `.yml` accanto verrebbe ignorato in silenzio |
-| `ts-serve.json` | `/volume1/docker/openreply/ts-config/serve.json` — configurazione del Funnel |
+| `ts-serve.json` | `/volume1/docker/openreply/ts-config/serve.json` — configurazione del Funnel Tailscale, ormai secondario (vedi sotto) |
+
+## Come l'istanza è pubblicata: Cloudflare Tunnel, non più il Funnel
+
+Dal 30/08/2026 l'indirizzo pubblico è **`link.printzone3d.com`**, servito da un container
+`cloudflared` nello stack (token in `CLOUDFLARE_TUNNEL_TOKEN`, hostname pubblico configurato in
+Cloudflare Zero Trust verso `http://web:3000`, tipo **HTTP**: dentro il tunnel il traffico è già
+cifrato e mettere HTTPS darebbe 502).
+
+**Perché non basta più il Funnel di Tailscale.** I nomi `*.ts.net` vengono bloccati da parecchi
+filtri DNS, che classificano Tailscale come VPN: il router di casa non li risolveva, e un utente
+in Germania ha ricevuto `ERR_NAME_NOT_RESOLVED` aprendo il link di un DM. Il difetto è subdolo
+perché **per chi manda i link funziona sempre**: il destinatario semplicemente non apre nulla e
+non lo dice. Un dominio proprio non ha questo problema.
+
+`NEXTAUTH_URL` deve puntare al dominio pubblico: è quello che costruisce i link tracciati dei DM
+(`lib/tracking/message.ts`). Cambiandolo, riavviare **web e worker** — i link li scrive il worker.
+
+Il Funnel Tailscale resta acceso in parallelo finché i DM già inviati, che contengono il vecchio
+indirizzo, hanno esaurito il loro giro. Le due strade convivono senza interferire.
 
 Il `Dockerfile` **non è più qui**: dal 29/08/2026 l'upstream ne pubblica uno alla radice del
 repo ([#35](https://github.com/diwenne/openreply/pull/35)), pensato proprio per il self-hosting
