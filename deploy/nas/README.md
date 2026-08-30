@@ -61,13 +61,13 @@ password: senza, l'archivio non serve a niente.
 ```bash
 # 1. sorgenti (sul NAS non c'è git: si estrae un archivio)
 git archive --format=tar.gz -o /tmp/src.tgz HEAD
-scp -O /tmp/src.tgz Emanuele@192.168.1.172:/volume1/docker/openreply/
-ssh Emanuele@192.168.1.172 'cd /volume1/docker/openreply && tar xzf src.tgz -C repo && rm src.tgz'
+scp -O /tmp/src.tgz Emanuele@dxp2800-f339.local:/volume1/docker/openreply/
+ssh Emanuele@dxp2800-f339.local 'cd /volume1/docker/openreply && tar xzf src.tgz -C repo && rm src.tgz'
 
 # 2. i tre file qui sopra al loro posto, poi il .env ripristinato dalla copia cifrata
 
 # 3. build e avvio
-ssh Emanuele@192.168.1.172 'cd /volume1/docker/openreply && docker compose up -d --build'
+ssh Emanuele@dxp2800-f339.local 'cd /volume1/docker/openreply && docker compose up -d --build'
 ```
 
 Attenzione al nome del progetto Compose: deve restare **`openreply`**, altrimenti Docker crea
