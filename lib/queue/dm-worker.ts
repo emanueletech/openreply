@@ -1,4 +1,4 @@
-import { Worker, type Job } from "bullmq";
+import { UnrecoverableError, Worker, type Job } from "bullmq";
 import {
   getDMQueue,
   getRedisConnection,
@@ -719,6 +719,11 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
           errorMessage: formatError(error),
         },
       });
+      // Some Meta rejections are final: retrying spends more API calls to be
+      // told the same thing. The reason is already in DmLog either way.
+      if (isPermanentMetaFailure(error)) {
+        throw new UnrecoverableError(formatError(error));
+      }
       throw error;
     }
   }
@@ -1256,6 +1261,25 @@ async function processJob(job: Job<DmQueueJob>): Promise<void> {
   return processComment(job as Job<ProcessCommentJob>);
 }
 
+/**
+ * Meta rejections that will fail identically on every retry.
+ *
+ * 2534025 — "this comment is not eligible for a private reply" — happens
+ * routinely when someone comments twice: the first comment gets the DM, and
+ * Instagram refuses a second private reply to the same person on the same
+ * post. Retrying spends two more API calls to be told the same thing, and
+ * files three worker errors for something that needed no action at all.
+ */
+const PERMANENT_META_SUBCODES = new Set([2534025]);
+
+export function isPermanentMetaFailure(error: unknown): boolean {
+  return (
+    error instanceof MetaApiError &&
+    error.subcode !== undefined &&
+    PERMANENT_META_SUBCODES.has(error.subcode)
+  );
+}
+
 async function recordWorkerFailure(
   job: Job<DmQueueJob> | undefined,
   error: Error
@@ -1324,6 +1348,10 @@ export function createDMWorker(): Worker<DmQueueJob> {
       `[DM Worker] Job ${job?.id} failed (attempt ${job?.attemptsMade}):`,
       err.message
     );
+    // A comment that is not eligible for a private reply is already recorded in
+    // DmLog with its reason: filing a worker error too would only raise noise on
+    // whoever is watching, for a case that needs no action.
+    if (isPermanentMetaFailure(err)) return;
     void recordWorkerFailure(job, err);
   });
 

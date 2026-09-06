@@ -65,14 +65,18 @@ vi.mock("@/lib/meta/client", () => ({
   sendCommentReply: vi.fn(),
   MetaApiError: class MetaApiError extends Error {
     code: number;
+    subcode: number | undefined;
     constructor(
       code: number,
-      _subcode: number | undefined,
+      subcode: number | undefined,
       _fbTraceId: string | undefined,
       message: string
     ) {
       super(message);
       this.code = code;
+      // Kept because the worker decides on it: a subcode marks the rejections
+      // that will fail identically on every retry.
+      this.subcode = subcode;
       this.name = "MetaApiError";
     }
   },
@@ -128,7 +132,8 @@ vi.mock("bullmq", () => {
   };
 });
 
-import { createDMWorker } from "../lib/queue/dm-worker";
+import { createDMWorker, isPermanentMetaFailure } from "../lib/queue/dm-worker";
+import { MetaApiError } from "@/lib/meta/client";
 import { DEFAULT_FOLLOW_BUTTON_LABEL } from "../lib/defaults";
 
 const usagePeriodStart = new Date("2026-05-01T00:00:00.000Z");
@@ -1116,5 +1121,31 @@ describe("DM Worker — DM keyword trigger", () => {
         create: expect.objectContaining({ status: "FAILED" }),
       })
     );
+  });
+});
+
+describe("isPermanentMetaFailure", () => {
+  it("treats a comment ineligible for private reply as final", () => {
+    // Someone commented twice: the first comment got the DM, and Instagram
+    // refuses a second private reply to the same person on the same post.
+    // Retrying can only be told the same thing again.
+    const error = new MetaApiError(
+      100,
+      2534025,
+      "trace",
+      "This comment is not eligible for a private reply"
+    );
+    expect(isPermanentMetaFailure(error)).toBe(true);
+  });
+
+  it("leaves other Meta errors retryable", () => {
+    // A rate limit or a transient failure has to keep its retries.
+    expect(isPermanentMetaFailure(new MetaApiError(4, 2207051, "t", "rate limit"))).toBe(false);
+    expect(isPermanentMetaFailure(new MetaApiError(100, undefined, "t", "generic"))).toBe(false);
+  });
+
+  it("ignores anything that is not a Meta error", () => {
+    expect(isPermanentMetaFailure(new Error("network down"))).toBe(false);
+    expect(isPermanentMetaFailure(undefined)).toBe(false);
   });
 });

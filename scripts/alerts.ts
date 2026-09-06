@@ -106,11 +106,28 @@ async function checkToken() {
       days <= TOKEN_WARN_DAYS,
       `⚠️ <b>Token Instagram in scadenza</b>\n\n` +
         `@${a.username} scade fra ${days} giorni (${a.tokenExpiresAt.toISOString().slice(0, 10)}).\n\n` +
-        `Il rinnovo è automatico entro 10 giorni dalla scadenza: se questo avviso resta, ` +
-        `il rinnovo non sta funzionando e le automazioni si fermeranno senza altri errori.`,
-      `✅ <b>Token Instagram rinnovato</b>\n\n@${a.username} è di nuovo valido a lungo.`
+        `Il rinnovo automatico parte quando mancano 10 giorni. Se questo avviso è ancora ` +
+        `qui dopo quella soglia, il rinnovo non sta funzionando: le automazioni si fermerebbero ` +
+        `alla scadenza senza altri errori.`,
+      `✅ <b>Token Instagram di nuovo a posto</b>\n\n` +
+        `@${a.username} ora scade fra più di ${TOKEN_WARN_DAYS} giorni.`
     );
   }
+}
+
+/**
+ * Meta rejections that need no action from anyone.
+ *
+ * 2534025 fires when someone comments twice: the first comment got the DM, and
+ * Instagram refuses a second private reply to the same person on the same post.
+ * The recipient already has the link — alerting would train the reader to
+ * ignore the channel, which costs more than the information is worth.
+ */
+const EXPECTED_META_SUBCODES = [2534025];
+
+function needsNoAction(errorMessage: string | null): boolean {
+  if (!errorMessage) return false;
+  return EXPECTED_META_SUBCODES.some((c) => errorMessage.includes(`sub=${c}`));
 }
 
 async function checkFailedDms() {
@@ -131,6 +148,7 @@ async function checkFailedDms() {
   });
 
   for (const dm of failed) {
+    if (needsNoAction(dm.errorMessage)) continue;
     if (!(await firstTime(`dm:${dm.id}`))) continue;
     await send(
       `❌ <b>DM non inviato</b>\n\n` +
@@ -155,6 +173,7 @@ async function checkOperationalErrors() {
   });
 
   for (const e of events) {
+    if (needsNoAction(e.message)) continue;
     if (!(await firstTime(`event:${e.id}`))) continue;
     await send(
       `${e.level === "ERROR" ? "❌" : "⚠️"} <b>${e.level} — ${e.source}</b>\n\n` +
