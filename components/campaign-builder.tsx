@@ -159,7 +159,10 @@ export default function CampaignBuilder({ mode, campaignId }: CampaignBuilderPro
 
   const [matchMode, setMatchMode] = useState<MatchMode>("specific");
   const [keywordText, setKeywordText] = useState("");
-  const [dmTriggerEnabled, setDmTriggerEnabled] = useState(false);
+  // Acceso di default sulle campagne nuove: chi vede il reel condiviso da un
+  // amico, o lo ritrova fra i salvati, scrive in privato invece di commentare —
+  // e senza questo non riceve nulla. In modifica vince sempre il valore salvato.
+  const [dmTriggerEnabled, setDmTriggerEnabled] = useState(mode === "new");
 
   const [publicReplyEnabled, setPublicReplyEnabled] = useState(false);
   const [publicReplyMessages, setPublicReplyMessages] = useState<string[]>([""]);
