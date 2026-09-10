@@ -5,7 +5,8 @@
  *
  * Un video, una copertina, quattro campi: da qui partono i tre post su Buffer
  * (Instagram, TikTok, YouTube) e, se la spunta sulla parola chiave è accesa,
- * la campagna commento→DM che si aggancerà al reel appena pubblicato.
+ * la campagna commento→DM che si aggancerà al reel appena pubblicato. Spenta,
+ * il link al modello — quando c'è — esce nella caption invece che nel DM.
  *
  * Pensata per il telefono: i campi che cambiano di rado (filamento, stampante,
  * piatto) restano memorizzati e si ripresentano già compilati. Il form non è
@@ -355,9 +356,8 @@ export default function PubblicaPage() {
 
         {!campagna && (
           <p className="text-xs text-muted">
-            Senza spunta il video esce e basta: nessuna campagna commento→DM,
-            e su Instagram la caption rimanda alla bio invece di chiedere un
-            commento a cui non risponderebbe nessuno.
+            Senza spunta il video esce e basta: nessuna campagna commento→DM, e
+            la caption non chiede un commento a cui non risponderebbe nessuno.
           </p>
         )}
 
@@ -383,7 +383,17 @@ export default function PubblicaPage() {
 
         <div className="space-y-1">
           <label className="text-sm font-medium">Link al modello</label>
-          <input name="link" placeholder="https://makerworld.com/..." className={INPUT} />
+          <input
+            name="link"
+            placeholder="https://makerworld.com/..."
+            onChange={chiediAnteprima}
+            className={INPUT}
+          />
+          <p className="text-xs text-muted">
+            {campagna
+              ? "Esce nel DM di chi commenta la parola chiave, non nella caption."
+              : "Senza campagna esce qui nella caption di Instagram. Lasciandolo vuoto, la caption non lo nomina proprio."}
+          </p>
         </div>
 
         <details className="rounded-lg border border-border px-3 py-2">
@@ -524,7 +534,7 @@ export default function PubblicaPage() {
               {canale === "IG"
                 ? campagna
                   ? "La parola chiave compare solo qui: è questo commento che fa partire il DM."
-                  : "Nessuna campagna su questo post: la caption manda alla bio, non a un commento."
+                  : "Nessuna campagna su questo post: qui esce il link al modello, se l'hai scritto."
                 : canale === "YT"
                   ? "Su YouTube la prima riga diventa il titolo del video: se la riscrivi, tienila come titolo."
                   : "Qui la parola chiave non c'è: chi commenta su questo canale non riceverebbe nulla."}
