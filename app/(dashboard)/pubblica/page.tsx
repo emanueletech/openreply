@@ -4,8 +4,8 @@
  * Pubblica
  *
  * Un video, una copertina, quattro campi: da qui partono i tre post su Buffer
- * (Instagram, TikTok, YouTube) e la campagna commento→DM che si aggancerà al
- * reel appena pubblicato.
+ * (Instagram, TikTok, YouTube) e, se la spunta sulla parola chiave è accesa,
+ * la campagna commento→DM che si aggancerà al reel appena pubblicato.
  *
  * Pensata per il telefono: i campi che cambiano di rado (filamento, stampante,
  * piatto) restano memorizzati e si ripresentano già compilati. Il form non è
@@ -39,6 +39,7 @@ interface Job {
   post: Record<string, string>;
   errori: string[];
   keyword: string;
+  campagna?: boolean;
 }
 
 const AVANZAMENTO: Record<string, string> = {
@@ -68,6 +69,9 @@ export default function PubblicaPage() {
   const [quando, setQuando] = useState<"subito" | "data" | "coda">("subito");
   const [dataOra, setDataOra] = useState("");
   const [canale, setCanale] = useState<"IG" | "TIKTOK" | "YT">("IG");
+  // Non ogni video vuole un'automazione: senza campagna il post esce e basta,
+  // e la CTA di Instagram rimanda alla bio invece di chiedere un commento.
+  const [campagna, setCampagna] = useState(true);
   const [inclusi, setInclusi] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(RICORDATI.map((c) => [c, c !== "extra"]))
   );
@@ -177,6 +181,7 @@ export default function PubblicaPage() {
       corpo.delete("video");
       corpo.delete("cover");
       corpo.set("escludi", campiEsclusi());
+      corpo.set("campagna", campagna ? "1" : "0");
       try {
         const res = await fetch("/api/pubblica?anteprima=1", {
           method: "POST",
@@ -197,7 +202,7 @@ export default function PubblicaPage() {
     // Anche al cambio delle spunte: l'anteprima deve mostrare la caption senza
     // le righe tolte, altrimenti la spunta sembra non fare niente.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inclusi]);
+  }, [inclusi, campagna]);
 
   const invia = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -227,6 +232,7 @@ export default function PubblicaPage() {
     // Una riga tolta va detta al servizio: lasciarla fuori e basta la farebbe
     // ricadere sul default di config.txt, che è il contrario di toglierla.
     corpo.set("escludi", campiEsclusi());
+    corpo.set("campagna", campagna ? "1" : "0");
 
     // Solo le caption davvero riscritte: le altre le costruisce il servizio dal
     // template, come sempre.
@@ -297,7 +303,8 @@ export default function PubblicaPage() {
         <h1 className="text-xl font-semibold">Pubblica</h1>
         <p className="mt-1 text-sm text-muted">
           Un video e quattro campi: i post partono su Instagram, TikTok e
-          YouTube, e la campagna si aggancia da sola al reel appena esce.
+          YouTube. Con la spunta sulla parola chiave la campagna commento→DM si
+          aggancia da sola al reel appena esce.
         </p>
       </div>
 
@@ -327,10 +334,32 @@ export default function PubblicaPage() {
             <input name="titolo" required placeholder="HelixCore" className={INPUT} />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium">Parola chiave</label>
-            <input name="keyword" required placeholder="Spin" className={INPUT} />
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={campagna}
+                onChange={(e) => setCampagna(e.target.checked)}
+                className="h-4 w-4 accent-accent"
+              />
+              Parola chiave
+            </label>
+            <input
+              name="keyword"
+              required
+              disabled={!campagna}
+              placeholder="Spin"
+              className={`${INPUT} disabled:opacity-40`}
+            />
           </div>
         </div>
+
+        {!campagna && (
+          <p className="text-xs text-muted">
+            Senza spunta il video esce e basta: nessuna campagna commento→DM,
+            e su Instagram la caption rimanda alla bio invece di chiedere un
+            commento a cui non risponderebbe nessuno.
+          </p>
+        )}
 
         <div className="space-y-1">
           <label className="text-sm font-medium">Tempo di stampa</label>
@@ -493,7 +522,9 @@ export default function PubblicaPage() {
           <div className="flex items-center justify-between gap-2">
             <p className="text-xs text-muted">
               {canale === "IG"
-                ? "La parola chiave compare solo qui: è questo commento che fa partire il DM."
+                ? campagna
+                  ? "La parola chiave compare solo qui: è questo commento che fa partire il DM."
+                  : "Nessuna campagna su questo post: la caption manda alla bio, non a un commento."
                 : canale === "YT"
                   ? "Su YouTube la prima riga diventa il titolo del video: se la riscrivi, tienila come titolo."
                   : "Qui la parola chiave non c'è: chi commenta su questo canale non riceverebbe nulla."}
@@ -558,7 +589,9 @@ export default function PubblicaPage() {
 
           {job.stato === "fatto" && (
             <p className="text-muted">
-              Commenta «{job.keyword}» sotto il post per provare la campagna.
+              {job.campagna === false
+                ? "Pubblicato senza campagna: i commenti sotto questo post non fanno partire nessun DM."
+                : `Commenta «${job.keyword}» sotto il post per provare la campagna.`}
             </p>
           )}
 
