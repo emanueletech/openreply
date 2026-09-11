@@ -392,7 +392,7 @@ export default function PubblicaPage() {
           <p className="text-xs text-muted">
             {campagna
               ? "Esce nel DM di chi commenta la parola chiave, non nella caption."
-              : "Senza campagna esce qui nella caption di Instagram. Lasciandolo vuoto, la caption non lo nomina proprio."}
+              : "Senza campagna esce nelle caption di tutti e tre i canali. Lasciandolo vuoto, nessuna caption promette il file."}
           </p>
         </div>
 
@@ -534,10 +534,12 @@ export default function PubblicaPage() {
               {canale === "IG"
                 ? campagna
                   ? "La parola chiave compare solo qui: è questo commento che fa partire il DM."
-                  : "Nessuna campagna su questo post: qui esce il link al modello, se l'hai scritto."
+                  : "Nessuna campagna su questo post: esce il link al modello, se l'hai scritto."
                 : canale === "YT"
                   ? "Su YouTube la prima riga diventa il titolo del video: se la riscrivi, tienila come titolo."
-                  : "Qui la parola chiave non c'è: chi commenta su questo canale non riceverebbe nulla."}
+                  : campagna
+                    ? "Qui la parola chiave non c'è: chi commenta su questo canale non riceverebbe nulla."
+                    : "Nessuna campagna su questo post: esce il link al modello, se l'hai scritto."}
             </p>
             {riscritte[canale] !== undefined && (
               <button
