@@ -25,6 +25,8 @@ interface DashboardStats {
   clicksThisMonth: number;
   totalClicks: number;
   ctrThisMonth: number;
+  followersGained: number;
+  firstCampaignAt: string | null;
   instagramAccounts: AccountOption[];
   selectedInstagramAccountId: string | null;
   topKeywords: { keyword: string; count: number }[];
@@ -68,7 +70,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
           {[...Array(6)].map((_, i) => (
             <div key={i} className="panel rounded p-5 h-32">
               <div className="w-10 h-10 rounded bg-surface-hover" />
@@ -115,7 +117,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
         <StatCard
           label="Campagne attive"
           value={stats?.activeAutomations ?? 0}
@@ -125,6 +127,19 @@ export default function DashboardPage() {
         <StatCard label="Fallito" value={stats?.dmsFailedMonth ?? 0} />
         <StatCard label="Clic" value={stats?.clicksThisMonth ?? 0} />
         <StatCard label="CTR" value={`${stats?.ctrThisMonth ?? 0}%`} />
+        <StatCard
+          label="Nuovi follower"
+          value={stats?.followersGained ?? 0}
+          hint={
+            stats?.firstCampaignAt
+              ? `dal ${new Date(stats.firstCampaignAt).toLocaleDateString("it-IT", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                })}`
+              : undefined
+          }
+        />
       </div>
 
       {/* Chart + Recent Activity */}

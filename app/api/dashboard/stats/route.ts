@@ -50,6 +50,8 @@ export async function GET(request: NextRequest) {
     recentLogs,
     user,
     contactRows,
+    followersGained,
+    firstCampaign,
   ] = await Promise.all([
     prisma.workspace.findUnique({
       where: { id: workspaceId },
@@ -147,6 +149,25 @@ export async function GET(request: NextRequest) {
       distinct: ["commenterId"],
       select: { commenterId: true },
     }),
+    // Followers gained across every follow-gated campaign, all time. The
+    // reveal row exists once per person and only after Meta confirms the
+    // follow — see the same count per campaign in /api/automations.
+    prisma.dmLog.count({
+      where: {
+        workspaceId,
+        status: "SENT",
+        commentId: { startsWith: "reveal:" },
+        automation: { requireFollow: true },
+        ...accountFilter,
+      },
+    }),
+    // Which is to say: since the first campaign was created. Shown next to the
+    // number so it reads as a total over a period, not a lifetime account stat.
+    prisma.automation.findFirst({
+      where: { workspaceId, ...accountFilter },
+      orderBy: { createdAt: "asc" },
+      select: { createdAt: true },
+    }),
   ]);
 
   const dailyDMs: { date: string; count: number }[] = [];
@@ -209,6 +230,8 @@ export async function GET(request: NextRequest) {
       clicksThisMonth,
       totalClicks,
       ctrThisMonth: calculateCtr(clicksThisMonth, dmsSentMonth),
+      followersGained,
+      firstCampaignAt: firstCampaign?.createdAt ?? null,
       topKeywords,
       dailyDMs,
       recentLogs,
