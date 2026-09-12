@@ -177,7 +177,7 @@ export async function GET(request: NextRequest) {
     })
   );
 
-  const [statusCounts, clickCounts, keywordCounts] = await Promise.all([
+  const [statusCounts, clickCounts, keywordCounts, followTaps] = await Promise.all([
     prisma.dmLog.groupBy({
       by: ["automationId", "status"],
       where: { workspaceId },
@@ -193,6 +193,20 @@ export async function GET(request: NextRequest) {
       where: { workspaceId, matchedKeyword: { not: null } },
       _count: { _all: true },
     }),
+    // Followers gained. On a follow-gated campaign the prompt only reaches
+    // people who were *not* following, and the reveal is logged under
+    // "reveal:<userId>" — one row per person — only once Meta confirms the
+    // follow. So these rows are exactly the people who followed to get the
+    // link. Already-followers get the link straight away and never appear.
+    prisma.dmLog.groupBy({
+      by: ["automationId"],
+      where: {
+        workspaceId,
+        status: "SENT",
+        commentId: { startsWith: "reveal:" },
+      },
+      _count: { _all: true },
+    }),
   ]);
 
   const analytics = new Map<
@@ -202,6 +216,9 @@ export async function GET(request: NextRequest) {
       skipped: number;
       failed: number;
       clicks: number;
+      // null when the campaign has no follow gate: the taps it may have are
+      // not proof of a follow, and a number here would be read as one.
+      followersGained: number | null;
       topKeywords: { keyword: string; count: number }[];
     }
   >();
@@ -212,6 +229,7 @@ export async function GET(request: NextRequest) {
       skipped: 0,
       failed: 0,
       clicks: 0,
+      followersGained: automation.requireFollow ? 0 : null,
       topKeywords: [],
     });
   }
@@ -228,6 +246,13 @@ export async function GET(request: NextRequest) {
   for (const row of clickCounts) {
     const item = analytics.get(row.automationId);
     if (item) item.clicks = row._count._all;
+  }
+
+  for (const row of followTaps) {
+    const item = analytics.get(row.automationId);
+    if (item && item.followersGained !== null) {
+      item.followersGained = row._count._all;
+    }
   }
 
   for (const automation of automationsWithReports) {
@@ -253,6 +278,7 @@ export async function GET(request: NextRequest) {
         skipped: 0,
         failed: 0,
         clicks: 0,
+        followersGained: automation.requireFollow ? 0 : null,
         topKeywords: [],
       };
 

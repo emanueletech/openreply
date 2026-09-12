@@ -51,6 +51,7 @@ interface Campaign {
     failed: number;
     clicks: number;
     ctr: number;
+    followersGained: number | null;
   };
 }
 
@@ -165,6 +166,11 @@ export default function CampaignDetailPage() {
     { label: "Clic", value: campaign.analytics.clicks },
     { label: "CTR", value: `${campaign.analytics.ctr}%` },
     { label: "Fallito", value: campaign.analytics.failed },
+    // Solo a cancello attivo: senza, un numero qui verrebbe letto come una
+    // prova che quelle persone hanno seguito, e non lo è.
+    ...(campaign.analytics.followersGained !== null
+      ? [{ label: "Nuovi follower", value: campaign.analytics.followersGained }]
+      : []),
   ];
 
   return (
@@ -324,15 +330,28 @@ export default function CampaignDetailPage() {
         </div>
 
         {tab === "insights" && (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {metrics.map((m) => (
-              <div key={m.label} className="panel rounded p-4">
-                <p className="text-sm text-muted">{m.label}</p>
-                <p className="mt-1 text-2xl font-semibold text-foreground">
-                  {m.value}
-                </p>
-              </div>
-            ))}
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {metrics.map((m) => (
+                <div key={m.label} className="panel rounded p-4">
+                  <p className="text-sm text-muted">{m.label}</p>
+                  <p className="mt-1 text-2xl font-semibold text-foreground">
+                    {m.value}
+                  </p>
+                </div>
+              ))}
+            </div>
+            {campaign.analytics.followersGained !== null && (
+              <p className="text-xs text-muted">
+                <span className="text-foreground">Nuovi follower</span>: quante
+                persone hanno iniziato a seguirti per ricevere il link. Il
+                messaggio che chiede di seguire arriva solo a chi non ti
+                seguiva, e il link parte dopo che Instagram conferma il
+                seguito: chi ti seguiva già riceve tutto subito e non è
+                contato qui. Se qualcuno smette di seguirti dopo, resta
+                comunque nel conteggio.
+              </p>
+            )}
           </div>
         )}
 
