@@ -447,6 +447,46 @@ export async function getMediaComments(
  * returned by the Graph API at all. Disable that filter on the account to widen
  * results.
  */
+/** Comments per page while the post is light enough to serve them. */
+const COMMENT_PAGE_SIZE = 50;
+/**
+ * Floor for the shrinking retry below. A post that cannot serve five comments
+ * with their replies is failing for some other reason, and going lower would
+ * cost more requests than the page is worth.
+ */
+const MIN_COMMENT_PAGE_SIZE = 5;
+/**
+ * Ceiling on requests per media, which only bites once the page size has been
+ * cut. Without it a post Meta refuses at 50 would be walked five comments at a
+ * time, every five minutes, turning one heavy post into a rate limit (368) for
+ * every campaign on the account.
+ */
+const MAX_COMMENT_PAGES = 40;
+
+function withPageSize(url: string, limit: number): string {
+  const sized = new URL(url);
+  sized.searchParams.set("limit", String(limit));
+  return sized.toString();
+}
+
+/**
+ * Meta code 1 on the comments edge means "that page was too much work", not
+ * "something is broken".
+ *
+ * `replies{from}` is an expansion evaluated for every comment on the page, so
+ * the cost of a page grows with how many replies the comments have, not with
+ * the page size alone. Past some threshold Instagram stops rather than
+ * truncating, with the generic code 1 and the message "Please reduce the amount
+ * of data you're asking for". The same request succeeds at a smaller limit.
+ *
+ * Matched on the code alone: code 1 is Meta's catch-all, and the retry is safe
+ * for whatever else lands on it — a smaller page is still a valid request, and
+ * once the floor is reached the error propagates unchanged.
+ */
+function isPageTooHeavy(error: unknown): boolean {
+  return error instanceof MetaApiError && error.code === 1;
+}
+
 export async function getRecentMediaComments(
   accessToken: string,
   mediaId: string,
@@ -458,17 +498,29 @@ export async function getRecentMediaComments(
   const first = new URL(`${instagramGraphBase()}/${mediaId}/comments`);
   first.searchParams.set("fields", "id,text,timestamp,from,replies{from}");
   first.searchParams.set("order", "reverse_chronological");
-  first.searchParams.set("limit", "50");
   first.searchParams.set("access_token", accessToken);
 
   let nextUrl: string | null = first.toString();
+  let pageSize = COMMENT_PAGE_SIZE;
+  let pages = 0;
 
-  while (nextUrl !== null && results.length < max) {
-    const response: Response = await fetch(nextUrl);
-    const page = await handleResponse<{
-      data: InstagramComment[];
-      paging?: { next?: string };
-    }>(response);
+  while (nextUrl !== null && results.length < max && pages < MAX_COMMENT_PAGES) {
+    let page: { data: InstagramComment[]; paging?: { next?: string } };
+    try {
+      const response: Response = await fetch(withPageSize(nextUrl, pageSize));
+      page = await handleResponse<{
+        data: InstagramComment[];
+        paging?: { next?: string };
+      }>(response);
+    } catch (error) {
+      if (!isPageTooHeavy(error) || pageSize <= MIN_COMMENT_PAGE_SIZE) throw error;
+      // Same cursor, smaller page: nothing has been read yet, so this retries
+      // the page rather than skipping it. The reduced size sticks for the rest
+      // of the media — if the first page was too heavy, the next one is too.
+      pageSize = Math.max(MIN_COMMENT_PAGE_SIZE, Math.floor(pageSize / 2));
+      continue;
+    }
+    pages += 1;
     const data = page.data ?? [];
     results.push(...data);
 
