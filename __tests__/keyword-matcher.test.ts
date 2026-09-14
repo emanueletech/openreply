@@ -7,6 +7,7 @@
 import { describe, it, expect } from "vitest";
 import {
   foldDiacritics,
+  isShortEnoughForDmTrigger,
   matchKeywords,
   stripSpecialCharacters,
 } from "../lib/utils/keyword-matcher";
@@ -262,5 +263,29 @@ describe("matchKeywords — diacritics", () => {
   it("should not match across different Cyrillic letters", () => {
     // "йод" and "иод" are different words; an unscoped fold would conflate them.
     expect(matchKeywords("иод", ["йод"], true).matched).toBe(false);
+  });
+});
+
+describe("isShortEnoughForDmTrigger", () => {
+  it("accepts a keyword request", () => {
+    expect(isShortEnoughForDmTrigger("STL")).toBe(true);
+    expect(isShortEnoughForDmTrigger("Hopper please 🙏")).toBe(true);
+    expect(isShortEnoughForDmTrigger("Can I have the STL?")).toBe(true);
+  });
+
+  it("does not count emoji and punctuation as words", () => {
+    expect(isShortEnoughForDmTrigger("🔥 🔥 🔥 Moon !!! ??? ...")).toBe(true);
+  });
+
+  it("rejects a conversation that happens to contain a keyword", () => {
+    expect(
+      isShortEnoughForDmTrigger(
+        "As the exclusive model of the design, we will continue to provide you with copyright protection services."
+      )
+    ).toBe(false);
+  });
+
+  it("keeps scripts written without spaces matching", () => {
+    expect(isShortEnoughForDmTrigger("ガードのリンクをください")).toBe(true);
   });
 });

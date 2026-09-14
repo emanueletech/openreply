@@ -92,7 +92,11 @@ vi.mock("@/lib/meta/oauth", () => ({
   decryptToken: mockDecryptToken,
 }));
 
-vi.mock("@/lib/utils/keyword-matcher", () => ({
+vi.mock("@/lib/utils/keyword-matcher", async (importOriginal) => ({
+  // The length guard stays real: it decides whether matching runs at all.
+  isShortEnoughForDmTrigger: (
+    await importOriginal<typeof import("@/lib/utils/keyword-matcher")>()
+  ).isShortEnoughForDmTrigger,
   matchKeywords: mockMatchKeywords,
 }));
 
@@ -982,6 +986,20 @@ describe("DM Worker — DM keyword trigger", () => {
     );
     // Never a private reply — there is no comment to reply to.
     expect(mockSendPrivateReply).not.toHaveBeenCalled();
+  });
+
+  it("should ignore a long message even when it contains a keyword", async () => {
+    const processor = getProcessor();
+    await processor(
+      createMockMessageJob({
+        messageText:
+          "As the exclusive model of the design, we will continue to provide you with copyright protection services.",
+      })
+    );
+
+    expect(mockPrisma.automation.findMany).not.toHaveBeenCalled();
+    expect(mockSendDirectMessage).not.toHaveBeenCalled();
+    expect(mockSendDirectMessageWithLinkButton).not.toHaveBeenCalled();
   });
 
   it("should not reply when the DM text matches no keyword", async () => {

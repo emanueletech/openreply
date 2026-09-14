@@ -193,3 +193,24 @@ export function matchKeywords(
 
   return { matched: false, matchedKeyword: null };
 }
+
+/**
+ * Longest inbound DM that can still fire a campaign's DM trigger.
+ *
+ * Someone asking for the link writes the keyword and little else ("STL",
+ * "Hopper please"). A real conversation is longer, and ordinary keywords turn
+ * up in it by accident: a MakerWorld support message reading "As the exclusive
+ * model of the design…" matched a "model" keyword and got sent the download
+ * links. Comments are not limited — under a reel they are short by nature.
+ */
+export const DM_TRIGGER_MAX_WORDS = 5;
+
+/**
+ * Whether a DM is short enough to be a keyword request. Emoji and punctuation
+ * do not count as words. Scripts written without spaces (Chinese, Japanese,
+ * Thai) count as a single word, which keeps them matching as before.
+ */
+export function isShortEnoughForDmTrigger(messageText: string): boolean {
+  const words = stripSpecialCharacters(messageText).split(/\s+/).filter(Boolean);
+  return words.length <= DM_TRIGGER_MAX_WORDS;
+}

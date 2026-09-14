@@ -26,7 +26,10 @@ import {
   sendPrivateReplyWithLinkButton,
 } from "@/lib/meta/client";
 import { decryptToken } from "@/lib/meta/oauth";
-import { matchKeywords } from "@/lib/utils/keyword-matcher";
+import {
+  isShortEnoughForDmTrigger,
+  matchKeywords,
+} from "@/lib/utils/keyword-matcher";
 import { DEFAULT_FOLLOW_BUTTON_LABEL } from "@/lib/defaults";
 import {
   isLang,
@@ -1001,6 +1004,9 @@ async function processFollowUp(job: Job<ProcessFollowUpJob>): Promise<void> {
  */
 async function processMessage(job: Job<ProcessMessageJob>): Promise<void> {
   const { instagramAccountId, messageId, messageText, senderId } = job.data;
+
+  // A long message is a conversation, not a request: see DM_TRIGGER_MAX_WORDS.
+  if (!isShortEnoughForDmTrigger(messageText)) return;
 
   const automations = await prisma.automation.findMany({
     where: {
