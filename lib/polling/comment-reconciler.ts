@@ -45,14 +45,24 @@ const MAX_NEW_PER_SWEEP = Number(process.env.COMMENT_POLL_MAX_PER_SWEEP ?? 30);
 // For "any post" campaigns, how many recent posts to scan.
 const RECENT_MEDIA_LIMIT = 10;
 
-interface SweepStat {
+/**
+ * One failure during a sweep, kept as two fields rather than one sentence so
+ * the log line can group the failures that share a reason.
+ */
+export type SweepError = {
+  /** What failed: the sweep itself, the media list, or one media id. */
+  scope: string;
+  reason: string;
+};
+
+export type SweepStat = {
   campaign: string;
   keywords: string;
   matched: number;
   alreadyReplied: number;
   enqueued: number;
-  errors: string[];
-}
+  errors: SweepError[];
+};
 
 function errMessage(error: unknown): string {
   if (error instanceof MetaApiError) return `Meta ${error.code}: ${error.message}`;
@@ -96,7 +106,7 @@ export async function reconcileComments(): Promise<void> {
         matched: 0,
         alreadyReplied: 0,
         enqueued: 0,
-        errors: [errMessage(error)],
+        errors: [{ scope: "sweep", reason: errMessage(error) }],
       })
     );
     await recordSweep(automation.workspaceId, stat);
@@ -146,7 +156,10 @@ async function sweepCampaign(
     tokenCache.set(account.id, accessToken);
   }
   if (!accessToken) {
-    stat.errors.push("Failed to decrypt access token");
+    stat.errors.push({
+      scope: "token",
+      reason: "Failed to decrypt access token",
+    });
     return stat;
   }
 
@@ -161,7 +174,7 @@ async function sweepCampaign(
       const media = await getUserMedia(accessToken, RECENT_MEDIA_LIMIT);
       mediaIds.push(...media.map((m) => m.id));
     } catch (error) {
-      stat.errors.push(`Media list: ${errMessage(error)}`);
+      stat.errors.push({ scope: "media list", reason: errMessage(error) });
     }
   }
   if (mediaIds.length === 0) return stat;
@@ -173,7 +186,10 @@ async function sweepCampaign(
     try {
       comments = await getRecentMediaComments(accessToken, mediaId, sinceMs);
     } catch (error) {
-      stat.errors.push(`Comments ${mediaId}: ${errMessage(error)}`);
+      stat.errors.push({
+        scope: `media ${mediaId}`,
+        reason: errMessage(error),
+      });
       continue;
     }
 
@@ -290,6 +306,66 @@ export async function adMediaFor(postId: string): Promise<string[]> {
   }
 }
 
+/** How many distinct failure reasons one sweep message spells out. */
+const MAX_REASONS_LOGGED = 3;
+/** Cap per reason, so one long Meta error cannot crowd out the others. */
+const MAX_REASON_CHARS = 140;
+
+function truncate(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1)}\u2026` : text;
+}
+
+/**
+ * One-line summary of what went wrong during a sweep.
+ *
+ * Grouped by reason rather than listed per media: a rate limit on an "any post"
+ * campaign fails all ten media with the same Meta error, and ten copies of it
+ * would push a second, different failure past the 300 characters the Telegram
+ * alerter prints.
+ */
+export function summarizeSweepErrors(errors: SweepError[]): string {
+  const scopesByReason = new Map<string, string[]>();
+  for (const { scope, reason } of errors) {
+    const scopes = scopesByReason.get(reason);
+    if (scopes) scopes.push(scope);
+    else scopesByReason.set(reason, [scope]);
+  }
+
+  const parts = [...scopesByReason]
+    .slice(0, MAX_REASONS_LOGGED)
+    .map(([reason, scopes]) => {
+      const where =
+        scopes.length > 1 ? `${scopes[0]} (\u00d7${scopes.length})` : scopes[0];
+      return `${where}: ${truncate(reason, MAX_REASON_CHARS)}`;
+    });
+
+  const hidden = scopesByReason.size - parts.length;
+  if (hidden > 0) parts.push(`+${hidden} more`);
+
+  return parts.join("; ");
+}
+
+/**
+ * The line that ends up in the operational log.
+ *
+ * On a failed sweep the counters alone are worse than useless: a token that
+ * will not decrypt, or a media list Instagram refuses, produces "0 enqueued, 0
+ * matched, 0 already replied" — the very line a healthy sweep with nothing to
+ * do would write, only at WARNING level, so the reader is told something is
+ * wrong and nothing about what. Both readers of these events (the diagnostics
+ * page and the Telegram alerter) render `message` and nothing else, so an
+ * error that lives only in `payload` is an error nobody ever sees.
+ */
+export function sweepMessage(stat: SweepStat): string {
+  const summary = summarizeSweepErrors(stat.errors);
+  return (
+    `Comment sweep "${stat.campaign}" [${stat.keywords}]: ` +
+    `${stat.enqueued} enqueued, ${stat.matched} matched, ` +
+    `${stat.alreadyReplied} already replied` +
+    (summary ? ` \u2014 ${summary}` : "")
+  );
+}
+
 async function recordSweep(
   workspaceId: string,
   stat: SweepStat
@@ -303,7 +379,10 @@ async function recordSweep(
         workspaceId,
         source: "SYSTEM",
         level: stat.errors.length > 0 ? "WARNING" : "INFO",
-        message: `Comment sweep "${stat.campaign}" [${stat.keywords}]: ${stat.enqueued} enqueued, ${stat.matched} matched, ${stat.alreadyReplied} already replied`,
+        message: sweepMessage(stat),
+        // The full, ungrouped list stays here: the message is capped for the
+        // reader, the payload is what you dig into when three reasons are not
+        // enough.
         payload: { ...stat },
       },
     })
