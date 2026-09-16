@@ -34,23 +34,29 @@ export async function POST(request: NextRequest) {
   const signature = request.headers.get("x-hub-signature-256");
 
   if (!verifyWebhookSignature(rawBody, signature)) {
-    // Record the attempt so a signature mismatch is visible rather than a
-    // silent 401. This is the common symptom of FACEBOOK_APP_SECRET being
-    // set to the wrong app's secret for the webhook's signing key.
-    await prisma.operationalEvent
-      .create({
-        data: {
-          source: "SYSTEM",
-          level: "WARNING",
-          message: "Webhook signature verification failed",
-          payload: {
-            hadSignatureHeader: Boolean(signature),
-            bodyLength: rawBody.length,
-            bodyPreview: rawBody.slice(0, 200),
+    // Only a request that carried a signature is worth recording. One without
+    // the header never came from Meta, which signs every delivery: it is a
+    // scanner that found a public endpoint, and alerting on those teaches the
+    // reader to ignore the channel — the same reasoning as
+    // EXPECTED_META_SUBCODES in scripts/alerts.ts. A signature that is present
+    // but does not match is the case this record was written for: the usual
+    // symptom of FACEBOOK_APP_SECRET holding the wrong app's signing key.
+    if (signature) {
+      await prisma.operationalEvent
+        .create({
+          data: {
+            source: "SYSTEM",
+            level: "WARNING",
+            message: "Webhook signature verification failed",
+            payload: {
+              hadSignatureHeader: true,
+              bodyLength: rawBody.length,
+              bodyPreview: rawBody.slice(0, 200),
+            },
           },
-        },
-      })
-      .catch(() => {});
+        })
+        .catch(() => {});
+    }
     return NextResponse.json(
       { success: false, error: "Invalid signature" },
       { status: 401 }
