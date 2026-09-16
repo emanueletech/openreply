@@ -6,7 +6,7 @@ quella cartella si fosse persa, l'immagine e lo stack andavano ricostruiti a mem
 | File | Dove va sul NAS |
 |---|---|
 | `docker-compose.yaml` | `/volume1/docker/openreply/docker-compose.yaml` — **è il file che Compose legge**, un `.yml` accanto verrebbe ignorato in silenzio |
-| `ts-serve.json` | `/volume1/docker/openreply/ts-config/serve.json` — configurazione del Funnel Tailscale, ormai secondario (vedi sotto) |
+| `ts-serve.json` | `/volume1/docker/openreply/ts-config/serve.json` — configurazione del Funnel Tailscale, **spento dal 16/09/2026**: tenuto qui per poterlo ricostruire (vedi sotto) |
 
 ## Come l'istanza è pubblicata: Cloudflare Tunnel, non più il Funnel
 
@@ -24,9 +24,15 @@ non lo dice. Un dominio proprio non ha questo problema.
 `NEXTAUTH_URL` deve puntare al dominio pubblico: è quello che costruisce i link tracciati dei DM
 (`lib/tracking/message.ts`). Cambiandolo, riavviare **web e worker** — i link li scrive il worker.
 
-Il Funnel Tailscale resta acceso in parallelo finché i DM già inviati, che contengono il vecchio
-indirizzo, hanno esaurito il loro giro. Le due strade convivono senza interferire.
+Il Funnel Tailscale è rimasto acceso in parallelo per i DM già inviati, che contenevano il vecchio
+indirizzo, ed è stato **spento il 16/09/2026** con `docker compose stop tailscale`. Il container e
+il volume `openreply_tsstate` restano al loro posto: si riaccende con `start`.
 
+Da spegnere è il Funnel, **mai `cloudflared`**: da lì passano i webhook di Meta, i link di ogni DM
+recente e la dashboard. E prima di fermarlo va spostato chi lo usa: il servizio di pubblicazione
+aveva `OPENREPLY_URL` su quell'hostname, e senza quel passaggio ogni video sarebbe uscito senza
+campagna, in silenzio. I link `…ts.net/r/…` dentro i 38 DM anteriori al 30/08/2026 non si aprono
+più: è il prezzo accettato dello spegnimento.
 Il `Dockerfile` **non è più qui**: dal 29/08/2026 l'upstream ne pubblica uno alla radice del
 repo ([#35](https://github.com/diwenne/openreply/pull/35)), pensato proprio per il self-hosting
 — multi-stage, con `wget` e `scripts/` per il servizio cron. Si usa quello: una copia locale
