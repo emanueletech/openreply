@@ -8,6 +8,49 @@ quella cartella si fosse persa, l'immagine e lo stack andavano ricostruiti a mem
 | `docker-compose.yaml` | `/volume1/docker/openreply/docker-compose.yaml` — **è il file che Compose legge**, un `.yml` accanto verrebbe ignorato in silenzio |
 | `ts-serve.json` | `/volume1/docker/openreply/ts-config/serve.json` — configurazione del Funnel Tailscale, **spento dal 16/09/2026**: tenuto qui per poterlo ricostruire (vedi sotto) |
 
+## Dischi: cosa sta dove (misurato il 17/09/2026)
+
+Il NAS ha un NVMe nuovo come `/volume2`, e il **root di Docker è stato spostato** lì
+(`/volume2/@docker`, impostato in `/etc/docker/daemon.json`). Motivo: i dischi meccanici non si
+addormentavano mai perché Docker leggeva i suoi layer in continuazione, e il NAS sta in camera.
+
+Cosa è effettivamente sull'NVMe:
+
+| Cosa | Dove | Su cosa |
+|---|---|---|
+| Immagini, container, **volumi nominati** (`openreply_pgdata`, `_redisdata`, `_tsstate`) | `/volume2/@docker/...` | NVMe ✅ |
+| Cartella del progetto: `docker-compose.yaml`, `.env`, `repo/`, `ts-config/`, dump SQL | `/volume1/docker/openreply/` | pool meccanico |
+
+Quindi il database **è già** sull'NVMe (è un volume nominato), ed è quello che scriveva senza
+sosta. La cartella del progetto invece si legge solo al build e all'avvio, non a regime.
+
+**I comandi di questo README usano `/volume1/docker/openreply` ed è corretto così.** Verificato
+il 17/09/2026: `/volume1/docker` **non è un collegamento** a `/volume2/docker` — sono due cartelle
+distinte su due dischi diversi (device 64768 contro 64769, inode diversi, permessi 777 contro 700).
+I file vivi — `.env` del 6/09, `repo/` aggiornato dall'ultimo deploy — stanno su `/volume1`, e
+`/volume2/docker` non è nemmeno attraversabile dall'utente `Emanuele` (è `drwx------` di root).
+Usare `/volume2/docker/openreply` nei comandi darebbe `Permission denied`, e se lì esistesse una
+copia del periodo della migrazione, farebbe ripartire lo stack da un `.env` e da sorgenti vecchi.
+
+Se un giorno la cartella del progetto va spostata davvero, l'ordine è: fermare lo stack, spostare
+i file, correggere i permessi, ricreare i container (`docker compose up -d`, non `restart`) perché
+il bind mount di `ts-config` è inciso nella configurazione del container, e solo allora aggiornare
+i percorsi qui.
+
+## Spostare dati sul NAS: `tar`, mai `rsync`
+
+L'`rsync` di UGOS **non preserva i permessi**, senza dare errore nemmeno con `-vv`: un file `444`
+copiato con `rsync -a` fra due filesystem diversi arriva `600`, il modo del file temporaneo, come
+se il `chmod` finale non avvenisse. `cp -p` e `chmod` invece funzionano. Costata due ore: un root
+di Docker copiato così si avvia e poi ogni container muore con `executable file not found in
+$PATH` o `permission denied`.
+
+```bash
+tar --xattrs --xattrs-include='*' --numeric-owner -cf - sorgente | ( cd destinazione && tar xf - )
+```
+
+I permessi viaggiano dentro l'archivio, quindi arrivano interi.
+
 ## Come l'istanza è pubblicata: Cloudflare Tunnel, non più il Funnel
 
 Dal 30/08/2026 l'indirizzo pubblico è **`link.printzone3d.com`**, servito da un container
