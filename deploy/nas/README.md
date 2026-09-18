@@ -19,18 +19,22 @@ Cosa è effettivamente sull'NVMe:
 | Cosa | Dove | Su cosa |
 |---|---|---|
 | Immagini, container, **volumi nominati** (`openreply_pgdata`, `_redisdata`, `_tsstate`) | `/volume2/@docker/...` | NVMe ✅ |
-| Cartella del progetto: `docker-compose.yaml`, `.env`, `repo/`, `ts-config/`, dump SQL | `/volume1/docker/openreply/` | pool meccanico |
+| Cartella del progetto: `docker-compose.yaml`, `.env`, `repo/`, dump SQL | `/volume1/docker/openreply/` → `/volume2/docker/openreply/` | NVMe, tramite collegamento |
 
 Quindi il database **è già** sull'NVMe (è un volume nominato), ed è quello che scriveva senza
 sosta. La cartella del progetto invece si legge solo al build e all'avvio, non a regime.
 
-**I comandi di questo README usano `/volume1/docker/openreply` ed è corretto così.** Verificato
-il 17/09/2026: `/volume1/docker` **non è un collegamento** a `/volume2/docker` — sono due cartelle
-distinte su due dischi diversi (device 64768 contro 64769, inode diversi, permessi 777 contro 700).
-I file vivi — `.env` del 6/09, `repo/` aggiornato dall'ultimo deploy — stanno su `/volume1`, e
-`/volume2/docker` non è nemmeno attraversabile dall'utente `Emanuele` (è `drwx------` di root).
-Usare `/volume2/docker/openreply` nei comandi darebbe `Permission denied`, e se lì esistesse una
-copia del periodo della migrazione, farebbe ripartire lo stack da un `.env` e da sorgenti vecchi.
+**I comandi di questo README usano `/volume1/docker/openreply` e continuano a valere.** Dal
+17/09/2026 alle 22:35 quel percorso è un **collegamento** a `/volume2/docker`, quindi porta
+all'NVMe: i comandi vecchi funzionano senza modifiche. Durante la giornata del 17 il collegamento
+non c'era ancora — erano due cartelle distinte su due dischi — e chi legge note di quel giorno
+deve saperlo.
+
+**Anomalia da sistemare**, comparsa con la migrazione: `docker-compose.yaml` sul NAS è diventato
+`-rwx------ root root`, unico file della cartella (tutti gli altri sono `Emanuele:admin`) e diverso
+dagli altri stack, dove il compose è dell'utente. Così non è leggibile né modificabile senza
+`sudo`, che chiede la password: ogni intervento sullo stack passa per Emanuele finché non si
+rimette a posto con `sudo chown Emanuele:admin` e `chmod 660`.
 
 Se un giorno la cartella del progetto va spostata davvero, l'ordine è: fermare lo stack, spostare
 i file, correggere i permessi, ricreare i container (`docker compose up -d`, non `restart`) perché

@@ -1,5 +1,5 @@
 # OpenReply in self-hosting sul NAS UGREEN.
-# Web + worker + Postgres + Redis dedicati, esposti su internet da Tailscale Funnel
+# Web + worker + Postgres + Redis dedicati, esposti su internet da Cloudflare Tunnel
 # (HTTPS con certificato valido, nessun dominio da acquistare, nessuna porta aperta sul router).
 #
 # Postgres e Redis restano sulla rete interna del compose: non pubblicano nulla sull'host,
@@ -117,28 +117,7 @@ services:
       redis:
         condition: service_healthy
 
-  tailscale:
-    image: tailscale/tailscale:latest
-    container_name: openreply-tailscale
-    restart: unless-stopped
-    hostname: openreply
-    environment:
-      # auth key riutilizzabile generata dalla console Tailscale: senza, il container
-      # stampa un link di login che scade dopo pochi minuti e riparte in loop
-      TS_AUTHKEY: ${TS_AUTHKEY:-}
-      TS_HOSTNAME: openreply
-      TS_STATE_DIR: /var/lib/tailscale
-      TS_AUTH_ONCE: "true"
-      TS_USERSPACE: "true"
-      # serve.json va montato come DIRECTORY, altrimenti Tailscale non rileva le modifiche
-      TS_SERVE_CONFIG: /config/serve.json
-    volumes:
-      - tsstate:/var/lib/tailscale
-      - ./ts-config:/config
-    depends_on:
-      - web
 
 volumes:
   pgdata:
   redisdata:
-  tsstate:
