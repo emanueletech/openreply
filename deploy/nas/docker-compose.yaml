@@ -80,6 +80,21 @@ services:
       web:
         condition: service_healthy
 
+  alerts:
+    # Avvisi Telegram sui guasti che non si vedono: webhook fermi, token in
+    # scadenza, DM falliti, errori del worker. Sola lettura sul DB, non tocca
+    # Instagram: se muore questo, non si ferma nient altro.
+    image: openreply-app:local
+    container_name: openreply-alerts
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TZ: Europe/Rome
+    command: ["npx", "tsx", "scripts/alerts.ts"]
+    depends_on:
+      web:
+        condition: service_healthy
+
   cron:
     # I job di /api/cron sono schedulati solo in vercel.json, che fuori da Vercel
     # non legge nessuno: senza questo container non li chiamerebbe niente, e
