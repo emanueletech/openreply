@@ -30,11 +30,11 @@ all'NVMe: i comandi vecchi funzionano senza modifiche. Durante la giornata del 1
 non c'era ancora — erano due cartelle distinte su due dischi — e chi legge note di quel giorno
 deve saperlo.
 
-**Anomalia da sistemare**, comparsa con la migrazione: `docker-compose.yaml` sul NAS è diventato
-`-rwx------ root root`, unico file della cartella (tutti gli altri sono `Emanuele:admin`) e diverso
-dagli altri stack, dove il compose è dell'utente. Così non è leggibile né modificabile senza
-`sudo`, che chiede la password: ogni intervento sullo stack passa per Emanuele finché non si
-rimette a posto con `sudo chown Emanuele:admin` e `chmod 660`.
+**Attenzione ai permessi dopo una migrazione.** Il 18/09/2026 `docker-compose.yaml` sul NAS si è
+trovato `-rwx------ root root`, unico file della cartella non appartenente a `Emanuele:admin`:
+illeggibile senza `sudo`, che chiede la password, quindi lo stack non era più modificabile da
+remoto. Risolto con `sudo chown Emanuele:admin` e `chmod 660` sul file. Se ricapita dopo un
+intervento di sistema, è la prima cosa da controllare.
 
 Se un giorno la cartella del progetto va spostata davvero, l'ordine è: fermare lo stack, spostare
 i file, correggere i permessi, ricreare i container (`docker compose up -d`, non `restart`) perché
