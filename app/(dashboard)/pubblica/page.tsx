@@ -313,6 +313,19 @@ export default function PubblicaPage() {
         ref={form}
         onSubmit={invia}
         onInput={chiediAnteprima}
+        // Invio dentro un campo di testo faceva il submit implicito del
+        // browser: il video partiva davvero, a form ancora mezzo scritto.
+        onKeyDown={(e) => {
+          const dentro = e.target as HTMLElement;
+          if (
+            e.key === "Enter" &&
+            !e.shiftKey &&
+            dentro.tagName !== "TEXTAREA" &&
+            !(dentro instanceof HTMLButtonElement)
+          ) {
+            e.preventDefault();
+          }
+        }}
         className="space-y-4"
       >
         <div className="space-y-1">
