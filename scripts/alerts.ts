@@ -16,6 +16,10 @@
 
 import { prisma } from "@/lib/db/client";
 import Redis from "ioredis";
+import {
+  SWEEP_MESSAGE_PREFIX,
+  sweepFailurePersists,
+} from "@/lib/alerts/sweep-health";
 
 const redis = new Redis(process.env.REDIS_URL ?? "redis://redis:6379", {
   maxRetriesPerRequest: null,
@@ -31,6 +35,10 @@ const WEBHOOK_SILENCE_HOURS = Number(process.env.ALERT_WEBHOOK_SILENCE_HOURS ?? 
 /** Warn this many days before the Instagram token expires. */
 const TOKEN_WARN_DAYS = Number(process.env.ALERT_TOKEN_WARN_DAYS ?? 12);
 const INTERVAL_MS = Number(process.env.ALERT_INTERVAL_MS ?? 15 * 60_000);
+/** Quanto indietro si guarda per capire se lo sweep è ancora in errore. */
+const SWEEP_WINDOW_MS = Number(process.env.ALERT_SWEEP_WINDOW_MS ?? 20 * 60_000);
+/** Distanza minima fra due errori perché vengano da giri diversi. */
+const SWEEP_PERSIST_MS = Number(process.env.ALERT_SWEEP_PERSIST_MS ?? 6 * 60_000);
 
 async function send(text: string): Promise<boolean> {
   if (!BOT_TOKEN || !CHAT_ID) return false;
@@ -166,6 +174,9 @@ async function checkOperationalErrors() {
     where: {
       level: { in: ["ERROR", "WARNING"] },
       createdAt: { gte: new Date(Date.now() - 24 * 3600_000) },
+      // Gli sweep hanno un controllo tutto loro: qui passerebbero uno per
+      // campagna e riempirebbero il `take` prima di ogni altro evento.
+      NOT: { message: { startsWith: SWEEP_MESSAGE_PREFIX } },
     },
     select: { id: true, level: true, message: true, source: true },
     orderBy: { createdAt: "asc" },
@@ -182,6 +193,43 @@ async function checkOperationalErrors() {
   }
 }
 
+/**
+ * Lo sweep dei commenti: si avvisa solo se il guasto sopravvive a un giro.
+ *
+ * È uno stato, non un evento — fuori una volta quando comincia, una volta
+ * quando rientra — perché con una notifica per campagna ogni cinque minuti il
+ * canale diventa illeggibile proprio mentre qualcosa è rotto davvero.
+ */
+async function checkSweepFailures() {
+  const events = await prisma.operationalEvent.findMany({
+    where: {
+      level: { in: ["ERROR", "WARNING"] },
+      message: { startsWith: SWEEP_MESSAGE_PREFIX },
+      createdAt: { gte: new Date(Date.now() - SWEEP_WINDOW_MS) },
+    },
+    select: { message: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const persiste = sweepFailurePersists(
+    events.map((e) => e.createdAt),
+    SWEEP_PERSIST_MS
+  );
+  const ultimo = events[events.length - 1];
+
+  await stateAlert(
+    "sweep",
+    persiste,
+    `⚠️ <b>Comment sweep in errore</b>\n\n` +
+      `Da più di ${Math.round(SWEEP_PERSIST_MS / 60_000)} minuti le campagne non ` +
+      `riescono a leggere i commenti, quindi nessun DM parte.\n\n` +
+      `Ultimo errore: ${(ultimo?.message ?? "").slice(0, 200)}`,
+    `✅ <b>Comment sweep di nuovo a posto</b>\n\n` +
+      `I commenti arretrati vengono ripresi dal giro successivo: la finestra ` +
+      `guarda indietro di 72 ore.`
+  );
+}
+
 async function runOnce() {
   // Each check is independent: one failing must not silence the others.
   for (const [name, check] of [
@@ -189,6 +237,7 @@ async function runOnce() {
     ["token", checkToken],
     ["dm", checkFailedDms],
     ["eventi", checkOperationalErrors],
+    ["sweep", checkSweepFailures],
   ] as const) {
     try {
       await check();
