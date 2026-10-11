@@ -840,8 +840,11 @@ async function processComment(job: Job<ProcessCommentJob>): Promise<void> {
         },
       });
       // Some Meta rejections are final: retrying spends more API calls to be
-      // told the same thing. The reason is already in DmLog either way.
-      if (isPermanentMetaFailure(sendError)) {
+      // told the same thing. The reason is already in DmLog either way. Asked
+      // of the original error, not of sendError: classifySendError wraps
+      // anything it cannot call a confirmed rejection, and the subcode would
+      // be lost inside the wrapper.
+      if (isPermanentMetaFailure(error)) {
         throw new UnrecoverableError(formatError(sendError));
       }
       throw sendError;
