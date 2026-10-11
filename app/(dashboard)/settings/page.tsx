@@ -1,7 +1,10 @@
 "use client";
 
+import LanguageSwitcher from "@/components/language-switcher";
+import { useI18n } from "@/lib/i18n/provider";
 import { Suspense, useEffect, useState } from "react";
 import type { AccountOption } from "@/components/account-select";
+import { ZernioConnection } from "@/components/zernio-connection";
 import { InstagramConnectNotice } from "@/components/instagram-connect-notice";
 
 interface SettingsData {
@@ -18,6 +21,7 @@ interface SettingsData {
   } | null;
   instagramAccounts: Array<
     AccountOption & {
+      provider?: "META" | "ZERNIO";
       tokenExpiresAt: string | null;
       webhookSubscribed: boolean;
     }
@@ -46,6 +50,7 @@ interface WorkspaceMembersData {
 }
 
 export default function SettingsPage() {
+  const { t, label, locale } = useI18n();
   const [data, setData] = useState<SettingsData | null>(null);
   const [membersData, setMembersData] = useState<WorkspaceMembersData | null>(
     null
@@ -75,7 +80,7 @@ export default function SettingsPage() {
   }
 
   async function disconnectInstagram(instagramAccountId: string) {
-    if (!confirm("Scollegare Instagram? Le campagne di questo account smetteranno di inviare DM.")) {
+    if (!confirm(t("Disconnect Instagram? Campaigns for this account will stop sending DMs."))) {
       return;
     }
 
@@ -102,7 +107,7 @@ export default function SettingsPage() {
       setMembersData(payload.data);
       setInviteEmail("");
     } else {
-      setMemberError(payload.error ?? "Non è stato possibile invitare il membro");
+      setMemberError(payload.error ?? t("Could not invite member"));
     }
     setBusy(null);
   }
@@ -136,15 +141,23 @@ export default function SettingsPage() {
         <InstagramConnectNotice />
       </Suspense>
 
+      <section className="panel rounded p-4 sm:p-6 space-y-3">
+        <h2 className="text-base font-semibold">{t("Interface language")}</h2>
+        <LanguageSwitcher />
+        <p className="text-sm text-muted">{t("Saved in this browser. Campaign messages stay unchanged.")}</p>
+      </section>
+
+      <ZernioConnection canManage={canManageMembers} />
+
       <section className="panel rounded p-4 sm:p-6">
-        <h2 className="text-base font-semibold mb-6">Connessione Instagram</h2>
+        <h2 className="text-base font-semibold mb-6">{t("Instagram Connection")}</h2>
 
         <div className="space-y-4">
           <div className="flex items-center justify-between gap-3 py-3 border-b border-border">
             <div>
-              <p className="text-sm font-medium text-foreground">Stato</p>
+              <p className="text-sm font-medium text-foreground">{t("Status")}</p>
               <p className="text-xs text-muted mt-0.5">
-                I webhook dei commenti e le risposte private dipendono da questa connessione.
+                {t("Comment webhooks and private replies depend on this connection.")}
               </p>
             </div>
             <span
@@ -154,27 +167,26 @@ export default function SettingsPage() {
                   : "bg-warning/10 text-warning"
               }`}
             >
-              {accounts.length > 0 ? "Collegato" : "Non collegato"}
+              {accounts.length > 0 ? t("Connected") : t("Not connected")}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 py-3 border-b border-border">
             <div>
-              <p className="text-sm font-medium text-foreground">Account</p>
+              <p className="text-sm font-medium text-foreground">{t("Accounts")}</p>
               <p className="text-xs text-muted mt-0.5">
-                {accounts.length} connected Instagram profile
-                {accounts.length === 1 ? "" : "s"}
+                {t(accounts.length === 1 ? "{count} connected Instagram profile" : "{count} connected Instagram profiles", { count: accounts.length })}
               </p>
             </div>
             <span className="text-sm text-muted">
-              {accounts.length > 0 ? `${accounts.length} connected` : "Nessuno"}
+              {accounts.length > 0 ? t("{count} connected", { count: accounts.length }) : t("None")}
             </span>
           </div>
 
           <div className="space-y-3 py-3">
             {accounts.length === 0 && (
               <p className="text-sm text-muted">
-                Collega un account Instagram professionale per avviare le campagne.
+                {t("Connect an Instagram professional account to launch campaigns.")}
               </p>
             )}
             {accounts.map((account) => (
@@ -187,11 +199,11 @@ export default function SettingsPage() {
                     @{account.username}
                   </p>
                   <p className="mt-1 text-xs text-muted">
-                    Token expires{" "}
+                    {account.provider === "ZERNIO" ? t("Connected via Zernio") : <>{t("Token expires")}{" "}
                     {account.tokenExpiresAt
-                      ? new Date(account.tokenExpiresAt).toLocaleDateString()
-                      : "non disponibile"}{" "}
-                    · {account.webhookSubscribed ? "Webhook pronto" : "Webhook in attesa"}
+                      ? new Date(account.tokenExpiresAt).toLocaleDateString(locale)
+                      : t("not available")}</>}{" "}
+                    · {account.webhookSubscribed ? t("Webhook ready") : t("Webhook pending")}
                   </p>
                 </div>
                 <button
@@ -200,8 +212,8 @@ export default function SettingsPage() {
                   className="inline-flex items-center justify-center rounded border border-error/20 px-4 py-2 text-sm font-medium text-error transition-all hover:border-error/40 hover:bg-error/10 disabled:opacity-50"
                 >
                   {busy === `disconnect:${account.id}`
-                    ? "Scollegamento…"
-                    : "Scollega"}
+                    ? t("Disconnecting...")
+                    : t("Disconnect")}
                 </button>
               </div>
             ))}
@@ -213,13 +225,13 @@ export default function SettingsPage() {
             href="/api/instagram/connect"
             className="px-4 py-2 rounded text-sm font-medium transition-colors bg-accent text-white hover:bg-accent-hover"
           >
-            {accounts.length > 0 ? "Collega un altro account" : "Collega Instagram"}
+            {t("Connect using your own Meta app")}
           </a>
         </div>
       </section>
 
       <section className="panel rounded p-4 sm:p-6">
-        <h2 className="text-base font-semibold mb-6">Team</h2>
+        <h2 className="text-base font-semibold mb-6">{t("Team")}</h2>
         <div className="space-y-3">
           {membersData?.members.map((member) => (
             <div
@@ -228,12 +240,12 @@ export default function SettingsPage() {
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-foreground">
-                  {member.user.name ?? member.user.email ?? "Membro sconosciuto"}
+                  {member.user.name ?? member.user.email ?? t("Unknown member")}
                 </p>
                 <p className="text-xs text-muted">{member.user.email}</p>
               </div>
               <span className="rounded-full border border-border px-3 py-1 text-xs font-semibold text-muted">
-                {member.role}
+                {label(member.role)}
               </span>
             </div>
           ))}
@@ -242,7 +254,7 @@ export default function SettingsPage() {
         {membersData?.invitations.length ? (
           <div className="mt-6 border-t border-border pt-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              Inviti in attesa
+              {t("Pending invites")}
             </p>
             <div className="space-y-3">
               {membersData.invitations.map((invitation) => (
@@ -255,7 +267,7 @@ export default function SettingsPage() {
                       {invitation.email}
                     </p>
                     <p className="truncate text-xs text-muted">
-                      {invitation.role} · {invitation.inviteUrl}
+                      {label(invitation.role)} · {invitation.inviteUrl}
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -266,7 +278,7 @@ export default function SettingsPage() {
                       }
                       className="rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-border-hover hover:text-foreground"
                     >
-                      Copy
+                      {t("Copy")}
                     </button>
                     <button
                       type="button"
@@ -274,7 +286,7 @@ export default function SettingsPage() {
                       disabled={busy === `invite:${invitation.id}`}
                       className="rounded-lg border border-error/20 px-3 py-1.5 text-xs font-medium text-error transition-colors hover:bg-error/10 disabled:opacity-50"
                     >
-                      Revoca
+                      {t("Revoke")}
                     </button>
                   </div>
                 </div>
@@ -292,7 +304,7 @@ export default function SettingsPage() {
               type="email"
               value={inviteEmail}
               onChange={(event) => setInviteEmail(event.target.value)}
-              placeholder="collega@agenzia.it"
+              placeholder="teammate@agency.com"
               className="rounded border border-border bg-surface px-4 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent/40"
               required
             />
@@ -303,15 +315,15 @@ export default function SettingsPage() {
               }
               className="rounded border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition-colors focus:border-accent/40"
             >
-              <option value="MEMBER">Membro</option>
-              <option value="ADMIN">Amministratore</option>
+              <option value="MEMBER">{t("Member")}</option>
+              <option value="ADMIN">{t("Admin")}</option>
             </select>
             <button
               type="submit"
               disabled={busy === "invite"}
               className="rounded bg-accent px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-accent-hover disabled:opacity-50"
             >
-              {busy === "invite" ? "Invito in corso…" : "Invita"}
+              {busy === "invite" ? t("Inviting...") : t("Invite")}
             </button>
             {memberError && (
               <p className="sm:col-span-3 text-sm text-error">{memberError}</p>
@@ -321,14 +333,14 @@ export default function SettingsPage() {
       </section>
 
       <section className="panel rounded p-4 sm:p-6">
-        <h2 className="text-base font-semibold mb-6">Utilizzo</h2>
+        <h2 className="text-base font-semibold mb-6">{t("Usage")}</h2>
         <div className="flex items-center justify-between gap-3 py-3">
           <div>
             <p className="text-sm font-medium text-foreground">
-              DM inviati questo mese
+              {t("DMs sent this month")}
             </p>
             <p className="text-xs text-muted mt-0.5">
-              Self-hosted — nessun limite di piano.
+              {t("Self-hosted — no plan limits.")}
             </p>
           </div>
           <span className="text-sm font-semibold text-foreground">

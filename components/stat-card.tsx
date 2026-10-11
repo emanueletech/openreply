@@ -1,3 +1,8 @@
+"use client";
+
+import { useI18n } from "@/lib/i18n/provider";
+
+
 /**
  * Stat Card
  *
@@ -13,7 +18,14 @@ interface StatCardProps {
   hint?: string;
 }
 
-export default function StatCard({ label, value, trend, trendUp, hint }: StatCardProps) {
+export default function StatCard({
+  label,
+  value,
+  trend,
+  trendUp,
+  hint,
+}: StatCardProps) {
+  const { t } = useI18n();
   return (
     <div className="panel rounded p-4">
       <p className="text-sm text-muted">{label}</p>
@@ -21,7 +33,7 @@ export default function StatCard({ label, value, trend, trendUp, hint }: StatCar
       {hint && <p className="text-xs text-muted mt-1">{hint}</p>}
       {trend && (
         <p className={`text-xs mt-1 ${trendUp ? "text-success" : "text-error"}`}>
-          {trendUp ? "Up" : "Down"} {trend}
+          {trendUp ? "Up" : t("Down")} {trend}
         </p>
       )}
     </div>

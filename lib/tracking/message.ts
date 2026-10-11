@@ -55,14 +55,19 @@ export function renderMessageWithoutLink({
     .trim();
 }
 
-export function buildTrackedUrl(slug: string, baseUrl?: string) {
+export function buildTrackedUrl(
+  slug: string,
+  baseUrl?: string,
+  recipientToken?: string
+) {
   const resolvedBaseUrl =
     baseUrl ??
     (typeof window !== "undefined"
       ? window.location.origin
       : process.env.NEXTAUTH_URL ?? "http://localhost:3000");
 
-  return `${resolvedBaseUrl.replace(/\/$/, "")}/r/${slug}`;
+  const url = `${resolvedBaseUrl.replace(/\/$/, "")}/r/${slug}`;
+  return recipientToken ? `${url}?r=${recipientToken}` : url;
 }
 
 export function renderMessageWithTracking({
@@ -71,12 +76,14 @@ export function renderMessageWithTracking({
   trackedLinks,
   baseUrl,
   language,
+  recipientToken,
 }: {
   message: string;
   commenterName?: string | null;
   trackedLinks?: MessageTrackedLink[];
   baseUrl?: string;
   language?: Lang | null;
+  recipientToken?: string;
 }) {
   let rendered = pickLanguage(message, language).replace(
     /\{username\}/gi,
@@ -86,7 +93,7 @@ export function renderMessageWithTracking({
 
   if (!primaryLink) return rendered;
 
-  const trackedUrl = buildTrackedUrl(primaryLink.slug, baseUrl);
+  const trackedUrl = buildTrackedUrl(primaryLink.slug, baseUrl, recipientToken);
 
   if (/\{link\}/i.test(rendered)) {
     return rendered.replace(/\{link\}/gi, trackedUrl);

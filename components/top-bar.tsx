@@ -6,19 +6,26 @@
  * Page title, mobile hamburger, and connection status.
  */
 
+import type { StaticMessageKey } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/provider";
 import { usePathname } from "next/navigation";
 
-const pageTitles: Record<string, string> = {
+const pageTitles: Record<string, StaticMessageKey> = {
   "/dashboard": "Dashboard",
-  "/pubblica": "Pubblica",
-  "/campaigns": "Campagne",
-  "/campaigns/new": "Nuova campagna",
-  "/automations": "Campagne",
-  "/automations/new": "Nuova campagna",
-  "/logs": "Registro DM",
-  "/settings": "Impostazioni",
-  "/diagnostics": "Diagnostica",
+  "/overview": "Overview",
+  "/inbox": "Inbox",
+  "/campaigns/import": "Import campaigns",
+  "/campaigns": "Campaigns",
+  "/campaigns/new": "New Campaign",
+  "/automations": "Campaigns",
+  "/automations/new": "New Campaign",
+  "/logs": "DM Logs",
+  "/settings": "Settings",
+  "/diagnostics": "Diagnostics",
 };
+
+/** Pagine del solo fork: titolo già in italiano, fuori dal catalogo. */
+const forkPageTitles: Record<string, string> = { "/pubblica": "Pubblica" };
 
 interface TopBarProps {
   onMenuClick: () => void;
@@ -31,16 +38,19 @@ export default function TopBar({
   instagramUsername,
   instagramAccountCount,
 }: TopBarProps) {
+  const { t } = useI18n();
   const pathname = usePathname();
-  const title = pageTitles[pathname] ?? "Dashboard";
+  const title: StaticMessageKey = pageTitles[pathname] ?? (
+    pathname.endsWith("/edit") ? "Edit campaign"
+      : pathname.startsWith("/campaigns/") ? "Campaign details" : "Dashboard"
+  );
 
   return (
-    // Installata sulla schermata Home dell'iPhone, l'app occupa tutto lo
-    // schermo: senza questo spazio in cima, il titolo finisce sotto l'orologio
-    // e la batteria. env(safe-area-inset-top) vale 0 sul desktop e nel browser,
-    // quindi lì non cambia nulla.
     <header
       className="sticky top-0 z-30 flex items-center justify-between gap-3 px-4 lg:px-8 border-b border-border bg-background"
+      // Installed to the home screen the app starts at the very top of the
+      // display, so without this the title sits under the clock and battery.
+      // The inset is 0 in a browser tab and on desktop.
       style={{
         height: "calc(4rem + env(safe-area-inset-top))",
         paddingTop: "env(safe-area-inset-top)",
@@ -50,17 +60,19 @@ export default function TopBar({
         <button
           onClick={onMenuClick}
           className="lg:hidden shrink-0 px-2.5 py-1.5 rounded border border-border text-sm text-muted hover:text-foreground"
-          aria-label="Apri/chiudi la barra laterale"
+          aria-label={t("Toggle sidebar")}
         >
-          Menu
+          {t("Menu")}
         </button>
-        <h1 className="truncate text-base font-semibold sm:text-lg">{title}</h1>
+        <h1 className="truncate text-base font-semibold sm:text-lg">
+          {forkPageTitles[pathname] ?? t(title)}
+        </h1>
       </div>
 
       {instagramAccountCount > 0 ? (
         <p className="shrink-0 truncate text-sm text-muted">
           {instagramAccountCount > 1
-            ? `${instagramAccountCount} accounts`
+            ? t("{count} accounts", { count: instagramAccountCount })
             : `@${instagramUsername}`}
         </p>
       ) : (
@@ -69,8 +81,8 @@ export default function TopBar({
           className="shrink-0 whitespace-nowrap text-sm font-medium px-3 py-1.5 rounded bg-accent text-white hover:bg-accent-hover"
         >
           {/* Full label needs more room than a 360px header has to spare. */}
-          <span className="sm:hidden">Collega</span>
-          <span className="hidden sm:inline">Collega Instagram</span>
+          <span className="sm:hidden">{t("Connect")}</span>
+          <span className="hidden sm:inline">{t("Connect Instagram")}</span>
         </a>
       )}
     </header>

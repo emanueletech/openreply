@@ -6,19 +6,22 @@
  * Text-only nav with active state and workspace section.
  */
 
+import LanguageSwitcher from "@/components/language-switcher";
+import { useI18n } from "@/lib/i18n/provider";
 import Link from "next/link";
+import Image from "next/image";
+import { zernioLink } from "@/lib/zernio-links";
 import { usePathname } from "next/navigation";
 
 const navItems = [
   { label: "Dashboard", href: "/dashboard" },
-  { label: "Pubblica", href: "/pubblica" },
-  { label: "Panoramica", href: "/overview" },
-  { label: "Messaggi", href: "/inbox" },
-  { label: "Campagne", href: "/campaigns" },
-  { label: "Registro DM", href: "/logs" },
-  { label: "Impostazioni", href: "/settings" },
-  { label: "Diagnostica", href: "/diagnostics" },
-];
+  { label: "Overview", href: "/overview" },
+  { label: "Inbox", href: "/inbox" },
+  { label: "Campaigns", href: "/campaigns" },
+  { label: "DM Logs", href: "/logs" },
+  { label: "Settings", href: "/settings" },
+  { label: "Diagnostics", href: "/diagnostics" },
+] as const;
 
 interface SidebarProps {
   isOpen: boolean;
@@ -31,7 +34,18 @@ export default function Sidebar({
   onClose,
   workspaceName,
 }: SidebarProps) {
+  const { t } = useI18n();
   const pathname = usePathname();
+  // "Pubblica" esiste solo in questo fork: l'etichetta è già in italiano e non
+  // passa dal catalogo, che contiene solo le chiavi dell'upstream.
+  const items = [
+    { label: t(navItems[0].label), href: navItems[0].href },
+    { label: "Pubblica", href: "/pubblica" },
+    ...navItems.slice(1).map((item) => ({
+      label: t(item.label),
+      href: item.href,
+    })),
+  ];
 
   return (
     <>
@@ -51,8 +65,8 @@ export default function Sidebar({
           ${isOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        {/* come nella barra in alto: sull'iPhone il menu parte dal bordo dello
-            schermo, quindi il logo finirebbe sotto l'orologio */}
+        {/* Same reason as the top bar: the drawer is full height, so the
+            wordmark would otherwise land under the status bar. */}
         <div
           className="px-6 py-5 border-b border-border"
           style={{ paddingTop: "calc(1.25rem + env(safe-area-inset-top))" }}
@@ -63,7 +77,7 @@ export default function Sidebar({
         </div>
 
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
+          {items.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + "/");
             return (
@@ -88,8 +102,24 @@ export default function Sidebar({
         </nav>
 
         <div className="px-5 py-4 border-t border-border">
+          <div className="mb-4"><LanguageSwitcher /></div>
           <p className="text-sm text-foreground truncate">{workspaceName}</p>
-          <p className="text-xs text-muted">Self-hosted</p>
+          <p className="text-xs text-muted">{t("Self-hosted")}</p>
+          <a
+            href={zernioLink({ placement: "sidebar" })}
+            target="_blank"
+            rel="sponsored noopener noreferrer"
+            className="mt-4 flex items-center gap-3 text-xs text-muted hover:text-foreground"
+          >
+            <span>{t("Supported by")}</span>
+            <Image
+              src="/brand/zernio-primary.svg"
+              alt="Zernio"
+              width={64}
+              height={20}
+              className="m-2"
+            />
+          </a>
         </div>
       </aside>
     </>

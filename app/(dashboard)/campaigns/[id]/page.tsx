@@ -8,6 +8,7 @@
  * live in the top bar.
  */
 
+import { useI18n } from "@/lib/i18n/provider";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -58,6 +59,7 @@ interface Campaign {
 type Tab = "insights" | "preview";
 
 export default function CampaignDetailPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
 
@@ -132,12 +134,12 @@ export default function CampaignDetailPage() {
   if (notFound || !campaign) {
     return (
       <div className="panel rounded p-8 text-center">
-        <p className="text-sm text-muted">Campagna non trovata.</p>
+        <p className="text-sm text-muted">{t("Campaign not found.")}</p>
         <button
           onClick={() => router.push("/campaigns")}
           className="mt-4 rounded border border-border px-4 py-2 text-sm text-muted hover:text-foreground"
         >
-          Torna alle campagne
+          {t("Back to campaigns")}
         </button>
       </div>
     );
@@ -153,24 +155,24 @@ export default function CampaignDetailPage() {
   const hasSecondLink = Boolean(campaign.trackedLinks?.[1]?.destinationUrl);
 
   const trigger = campaign.matchAnyPost
-    ? "Qualsiasi post o reel"
+    ? t("Any post or reel")
     : campaign.pendingNextReel
-      ? "Il tuo prossimo reel"
-      : "Un post o reel specifico";
+      ? t("Your next reel")
+      : t("A specific post or reel");
   const matchText = campaign.matchAnyWord
-    ? "Qualsiasi commento"
-    : campaign.keywords.join(", ") || "Nessuna parola chiave";
+    ? t("Any comment")
+    : campaign.keywords.join(", ") || t("No keywords");
 
   const metrics = [
-    { label: "Invii", value: campaign.analytics.sent },
-    { label: "Clic", value: campaign.analytics.clicks },
-    { label: "CTR", value: `${campaign.analytics.ctr}%` },
-    { label: "Fallito", value: campaign.analytics.failed },
+    { label: t("Sends"), value: campaign.analytics.sent },
+    { label: t("Clicks"), value: campaign.analytics.clicks },
+    { label: t("CTR"), value: `${campaign.analytics.ctr}%` },
     // Solo a cancello attivo: senza, un numero qui verrebbe letto come una
     // prova che quelle persone hanno seguito, e non lo è.
     ...(campaign.analytics.followersGained !== null
       ? [{ label: "Nuovi follower", value: campaign.analytics.followersGained }]
       : []),
+    { label: t("Failed"), value: campaign.analytics.failed },
   ];
 
   return (
@@ -182,7 +184,7 @@ export default function CampaignDetailPage() {
             href="/campaigns"
             className="text-sm text-muted hover:text-foreground"
           >
-            &larr; Campaigns
+            {t("← Campaigns")}
           </Link>
         </div>
         <div className="flex items-center gap-2">
@@ -194,39 +196,39 @@ export default function CampaignDetailPage() {
                 : "bg-zinc-500/10 text-muted"
             }`}
           >
-            {campaign.isActive ? "LIVE" : "In pausa"}
+            {campaign.isActive ? t("LIVE") : t("Paused")}
           </span>
         </div>
 
-        <Summary title="Quando qualcuno commenta su">
+        <Summary title={t("When someone comments on")}>
           <div className="flex items-center gap-3">
             {postThumb ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={postThumb}
-                alt="Post"
+                alt={t("Post")}
                 className="h-14 w-14 rounded object-cover"
               />
             ) : (
               <div className="grid h-14 w-14 place-items-center rounded bg-surface-hover text-[10px] text-muted">
-                {campaign.matchAnyPost || campaign.pendingNextReel ? "Qualsiasi" : "Post"}
+                {campaign.matchAnyPost || campaign.pendingNextReel ? "Any" : t("Post")}
               </div>
             )}
             <span className="text-sm text-foreground">{trigger}</span>
           </div>
         </Summary>
 
-        <Summary title="E questo commento contiene">
+        <Summary title={t("And this comment has")}>
           <FieldBox>{matchText}</FieldBox>
           {campaign.dmTriggerEnabled && (
             <p className="text-xs text-muted">
-              Risponde anche a chi scrive in DM{" "}
-              {campaign.matchAnyWord ? "qualsiasi parola" : "queste parole"}.
+              {t("Also replies when someone DMs")}{" "}
+              {campaign.matchAnyWord ? t("anything") : t("these words")}.
             </p>
           )}
           {publicReplies.length > 0 && (
             <div className="space-y-1.5">
-              <p className="text-xs text-muted">Risposta pubblica sotto al post</p>
+              <p className="text-xs text-muted">{t("Public reply under the post")}</p>
               {publicReplies.map((m, i) => (
                 <FieldBox key={i}>{m}</FieldBox>
               ))}
@@ -235,38 +237,38 @@ export default function CampaignDetailPage() {
         </Summary>
 
         {campaign.openingDmEnabled && (
-          <Summary title="Riceverà un DM di apertura">
-            <FieldBox>{campaign.openingDmMessage || "Messaggio di apertura"}</FieldBox>
-            <FieldBox>{campaign.openingDmButtonLabel || "Pulsante"}</FieldBox>
+          <Summary title={t("They will get an opening DM")}>
+            <FieldBox>{campaign.openingDmMessage || t("Opening message")}</FieldBox>
+            <FieldBox>{campaign.openingDmButtonLabel || t("Button")}</FieldBox>
           </Summary>
         )}
 
         {campaign.requireFollow && (
-          <Summary title="Deve seguirti prima">
+          <Summary title={t("They must follow first")}>
             <FieldBox>
               {campaign.followPromptMessage ||
                 "quick favor before i send your link. i don't make any money from this, it's free. if you want to support me, just don't unfollow after, and star the repo on github if it helps you. tap the button once you're following and i'll send it over"}
             </FieldBox>
             <FieldBox>
-              {campaign.followPromptButtonLabel || "ti sto seguendo"}
+              {campaign.followPromptButtonLabel || "i'm following"}
             </FieldBox>
           </Summary>
         )}
 
-        <Summary title="E poi riceverà un DM">
+        <Summary title={t("And then, they will get a DM")}>
           <FieldBox>{campaign.dmMessage}</FieldBox>
           {hasLink && (
-            <FieldBox>{campaign.linkButtonLabel || "Apri il link"}</FieldBox>
+            <FieldBox>{campaign.linkButtonLabel || "Open link"}</FieldBox>
           )}
           {hasSecondLink && (
             <FieldBox>
-              {campaign.trackedLinks?.[1]?.label || "Apri il link"}
+              {campaign.trackedLinks?.[1]?.label || "Open link"}
             </FieldBox>
           )}
         </Summary>
 
         {hasLink && (
-          <Summary title="Il link esatto inviato">
+          <Summary title={t("The exact link sent")}>
             {campaign.trackedLinks
               ?.filter((link) => link.destinationUrl)
               .map((link, i) => (
@@ -277,7 +279,7 @@ export default function CampaignDetailPage() {
                     </p>
                   </div>
                   <p className="text-xs text-muted">
-                    {link.label ? `${link.label} · ` : ""}reindirizza a{" "}
+                    {link.label ? `${link.label} · ` : ""}{t("redirects to")}{" "}
                     <span className="break-all">{link.destinationUrl}</span>
                   </p>
                 </div>
@@ -286,12 +288,12 @@ export default function CampaignDetailPage() {
         )}
 
         {campaign.followUpEnabled && campaign.followUpMessage && (
-          <Summary title="Poi un messaggio di follow-up">
+          <Summary title={t("Then a follow-up message")}>
             <FieldBox>{campaign.followUpMessage}</FieldBox>
             <p className="text-xs text-muted">
               {campaign.followUpDelayMinutes && campaign.followUpDelayMinutes > 0
-                ? `Inviato ${campaign.followUpDelayMinutes} min dopo il link.`
-                : "Inviato subito dopo il link."}
+                ? t("Sent {minutes} min after the link.", { minutes: campaign.followUpDelayMinutes })
+                : t("Sent right after the link.")}
             </p>
           </Summary>
         )}
@@ -302,10 +304,10 @@ export default function CampaignDetailPage() {
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3 border-b border-border pb-3">
           <div className="flex gap-4">
             <TabButton active={tab === "insights"} onClick={() => setTab("insights")}>
-              Statistiche
+              {t("Insights")}
             </TabButton>
             <TabButton active={tab === "preview"} onClick={() => setTab("preview")}>
-              Anteprima
+              {t("Preview")}
             </TabButton>
           </div>
           <div className="flex items-center gap-2">
@@ -313,7 +315,7 @@ export default function CampaignDetailPage() {
               href={`/campaigns/${campaign.id}/edit`}
               className="rounded border border-border px-3 py-1.5 text-sm text-muted hover:text-foreground"
             >
-              Edit
+              {t("Edit")}
             </Link>
             <button
               onClick={toggleActive}
@@ -324,7 +326,7 @@ export default function CampaignDetailPage() {
                   : "border-success/30 text-success hover:bg-success/10"
               }`}
             >
-              {campaign.isActive ? "Ferma" : "Riprendi"}
+              {campaign.isActive ? t("Stop") : t("Resume")}
             </button>
           </div>
         </div>
@@ -346,10 +348,9 @@ export default function CampaignDetailPage() {
                 <span className="text-foreground">Nuovi follower</span>: quante
                 persone hanno iniziato a seguirti per ricevere il link. Il
                 messaggio che chiede di seguire arriva solo a chi non ti
-                seguiva, e il link parte dopo che Instagram conferma il
-                seguito: chi ti seguiva già riceve tutto subito e non è
-                contato qui. Se qualcuno smette di seguirti dopo, resta
-                comunque nel conteggio.
+                seguiva, e il link parte dopo che Instagram conferma il seguito:
+                chi ti seguiva già riceve tutto subito e non è contato qui. Se
+                qualcuno smette di seguirti dopo, resta comunque nel conteggio.
               </p>
             )}
           </div>
@@ -364,7 +365,7 @@ export default function CampaignDetailPage() {
             avatarUrl={avatarUrl}
             postThumb={postThumb}
             caption=""
-            sampleComment={campaign.matchAnyWord ? "nice!" : campaign.keywords[0] ?? "LINK"}
+            sampleComment={campaign.matchAnyWord ? t("nice!") : campaign.keywords[0] ?? "LINK"}
             dmTriggerEnabled={campaign.dmTriggerEnabled}
             publicReplyEnabled={campaign.publicReplyEnabled}
             publicReplyMessage={publicReplies[0] ?? ""}
@@ -373,19 +374,19 @@ export default function CampaignDetailPage() {
             openingDmButtonLabel={campaign.openingDmButtonLabel ?? ""}
             revealMessage={campaign.dmMessage}
             hasLink={hasLink}
-            linkButtonLabel={campaign.linkButtonLabel ?? "Apri il link"}
+            linkButtonLabel={campaign.linkButtonLabel ?? "Open link"}
             linkUrl={
               campaign.trackedLinks?.[0]?.trackedUrl ??
               campaign.trackedLinks?.[0]?.destinationUrl
             }
             hasSecondLink={hasSecondLink}
             secondLinkButtonLabel={
-              campaign.trackedLinks?.[1]?.label ?? "Apri il link"
+              campaign.trackedLinks?.[1]?.label ?? "Open link"
             }
             requireFollow={campaign.requireFollow}
             followPromptMessage={campaign.followPromptMessage ?? ""}
             followPromptButtonLabel={
-              campaign.followPromptButtonLabel ?? "ti sto seguendo"
+              campaign.followPromptButtonLabel ?? "i'm following"
             }
             followUpEnabled={campaign.followUpEnabled ?? false}
             followUpMessage={campaign.followUpMessage ?? ""}
