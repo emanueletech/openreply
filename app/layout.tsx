@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
+import { DEFAULT_LOCALE } from "@/lib/i18n";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -42,7 +43,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full dark">
+    // The fork default, not the cookie: reading cookies() here would opt every
+    // static page out of prerendering. I18nProvider corrects the attribute
+    // client-side for a reader who picked another language.
+    <html lang={DEFAULT_LOCALE} className="h-full dark">
       <body
         className="min-h-full bg-background text-foreground font-sans antialiased"
         // Clears the home indicator when installed; 0 everywhere else.
