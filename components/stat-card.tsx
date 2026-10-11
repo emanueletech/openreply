@@ -33,7 +33,7 @@ export default function StatCard({
       {hint && <p className="text-xs text-muted mt-1">{hint}</p>}
       {trend && (
         <p className={`text-xs mt-1 ${trendUp ? "text-success" : "text-error"}`}>
-          {trendUp ? "Up" : t("Down")} {trend}
+          {trendUp ? t("Up") : t("Down")} {trend}
         </p>
       )}
     </div>
