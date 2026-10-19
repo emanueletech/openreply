@@ -15,6 +15,12 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  leggiPreset,
+  riconosciPreset,
+  valoreDaScrivere,
+  type Preset,
+} from "@/lib/pubblica/preset";
 
 const MEMORIA = "pubblica:ultimi-valori";
 const RUBRICA = "pubblica:gia-usati";
@@ -67,6 +73,13 @@ export default function PubblicaPage() {
   const [riscritte, setRiscritte] = useState<Record<string, string>>({});
   const [rubrica, setRubrica] = useState<Record<string, string[]>>({});
   const [marchi, setMarchi] = useState<string[]>([]);
+  // I preset arrivano da config.txt, quindi i pulsanti cambiano aggiungendo
+  // una riga al servizio: la pagina non sa quali macchine o filamenti esistano.
+  const [preset, setPreset] = useState<Record<string, Preset[]>>({});
+  const [presetAttivo, setPresetAttivo] = useState<Record<string, string>>({});
+  // L'hashtag del marchio sta nel preset che lo porta, non negli hashtag fissi:
+  // tenuto per gruppo, scegliere la U1 sostituisce #bambulab invece di aggiungersi.
+  const [hashtagPreset, setHashtagPreset] = useState<Record<string, string>>({});
   const [quando, setQuando] = useState<"subito" | "data" | "coda">("subito");
   const [dataOra, setDataOra] = useState("");
   const [canale, setCanale] = useState<"IG" | "TIKTOK" | "YT">("IG");
@@ -107,6 +120,17 @@ export default function PubblicaPage() {
         if (!d) return;
         compila(d);
         setMarchi(String(d.marchi || "").split(/\s+/).filter(Boolean));
+        const gruppi = leggiPreset(d);
+        setPreset(gruppi);
+        // I campi sono appena stati compilati, dalla memoria o dai default: un
+        // valore che è già quello di un preset ne accende il pulsante, e con
+        // esso l'hashtag del marchio che la memoria non tiene.
+        const { attivi, hashtag } = riconosciPreset(gruppi, (campo) => {
+          const input = form.current?.elements.namedItem(campo);
+          return input instanceof HTMLInputElement ? input.value : "";
+        });
+        setPresetAttivo(attivi);
+        setHashtagPreset(hashtag);
       })
       .catch(() => {})
       .finally(() => {
@@ -201,9 +225,68 @@ export default function PubblicaPage() {
       if (attesaAnteprima.current) clearTimeout(attesaAnteprima.current);
     };
     // Anche al cambio delle spunte: l'anteprima deve mostrare la caption senza
-    // le righe tolte, altrimenti la spunta sembra non fare niente.
+    // le righe tolte, altrimenti la spunta sembra non fare niente. E al cambio
+    // di preset, che riscrive i campi dal codice: un'assegnazione a `value` non
+    // emette `input`, quindi nessun altro evento farebbe ricalcolare la caption.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inclusi, campagna]);
+  }, [inclusi, campagna, hashtagPreset]);
+
+  /** Un pulsante riempie la sua riga, e porta con sé l'hashtag del marchio. */
+  const applicaPreset = (gruppo: string, scelto: Preset) => {
+    const daRiaccendere: Record<string, boolean> = {};
+    let daCompletare: HTMLInputElement | null = null;
+
+    for (const [campo, valore] of Object.entries(scelto.campi)) {
+      if (campo === "hashtag") continue;
+      const input = form.current?.elements.namedItem(campo);
+      if (!(input instanceof HTMLInputElement)) continue;
+      // Su una riga spenta il campo è `disabled` e non verrebbe inviato:
+      // scegliere un preset è il modo più chiaro di dire che quella riga serve.
+      if (!(inclusi[campo] ?? true)) {
+        daRiaccendere[campo] = true;
+        input.disabled = false;
+      }
+      input.value = valoreDaScrivere(valore);
+      if (input.value.endsWith(" ")) daCompletare = input;
+    }
+
+    if (Object.keys(daRiaccendere).length > 0) {
+      const aggiornate = { ...inclusi, ...daRiaccendere };
+      setInclusi(aggiornate);
+      localStorage.setItem(INCLUSI, JSON.stringify(aggiornate));
+    }
+    setPresetAttivo((attivi) => ({ ...attivi, [gruppo]: scelto.id }));
+    setHashtagPreset((tag) => ({ ...tag, [gruppo]: scelto.campi.hashtag ?? "" }));
+
+    // Un valore lasciato a metà (la sola menzione del marchio) chiede il
+    // materiale: il cursore ci finisce dentro, in fondo.
+    if (daCompletare) {
+      daCompletare.focus();
+      const fine = daCompletare.value.length;
+      daCompletare.setSelectionRange(fine, fine);
+    }
+  };
+
+  /** Scrivere a mano nel campo spegne il preset: il valore non è più quello. */
+  const scordaPreset = (gruppo: string) => {
+    if (!presetAttivo[gruppo]) return;
+    setPresetAttivo((attivi) => {
+      const resto = { ...attivi };
+      delete resto[gruppo];
+      return resto;
+    });
+    setHashtagPreset((tag) => {
+      const resto = { ...tag };
+      delete resto[gruppo];
+      return resto;
+    });
+  };
+
+  /** Gli hashtag dei preset scelti, meno quelli delle righe spente. */
+  const hashtagScelti = Object.entries(hashtagPreset)
+    .filter(([gruppo, tag]) => tag && (inclusi[gruppo] ?? true))
+    .map(([, tag]) => tag)
+    .join(" ");
 
   const invia = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -415,6 +498,8 @@ export default function PubblicaPage() {
             {RICORDATI.length})
           </summary>
           <div className="mt-3 space-y-3">
+            {/* L'hashtag del marchio viaggia col preset, non con i fissi. */}
+            <input type="hidden" name="hashtag_extra" value={hashtagScelti} />
             {RICORDATI.map((chiave) => (
               <div key={chiave} className="space-y-1">
                 <label className="flex items-center gap-2 text-sm font-medium">
@@ -430,6 +515,24 @@ export default function PubblicaPage() {
                   />
                   {ETICHETTE[chiave]}
                 </label>
+                {(preset[chiave]?.length ?? 0) > 0 && (
+                  <div className="flex flex-wrap gap-1 pb-0.5">
+                    {preset[chiave].map((scelto) => (
+                      <button
+                        key={scelto.id}
+                        type="button"
+                        onClick={() => applicaPreset(chiave, scelto)}
+                        className={
+                          presetAttivo[chiave] === scelto.id
+                            ? "rounded border border-accent/40 bg-accent/10 px-2 py-1 text-xs text-foreground"
+                            : "rounded border border-border px-2 py-1 text-xs text-muted hover:text-foreground"
+                        }
+                      >
+                        {scelto.etichetta}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 <input
                   name={chiave}
                   list={`suggerimenti-${chiave}`}
@@ -439,7 +542,10 @@ export default function PubblicaPage() {
                       ? "Una riga in più, con la sua emoji: 🔩 Nozzle: 0.4 mm"
                       : undefined
                   }
-                  onChange={chiediAnteprima}
+                  onChange={() => {
+                    scordaPreset(chiave);
+                    chiediAnteprima();
+                  }}
                   className={`${INPUT} disabled:opacity-40`}
                 />
                 <datalist id={`suggerimenti-${chiave}`}>
@@ -450,8 +556,12 @@ export default function PubblicaPage() {
               </div>
             ))}
             <p className="text-xs text-muted">
-              La spunta decide se la riga esce nella caption: toglierla la fa
-              sparire davvero, senza far ricomparire il valore di default. I
+              I pulsanti sopra ogni riga sono i valori già pronti: scegliendo
+              una stampante arriva anche l&apos;hashtag del suo marchio, che
+              così non resta quello della macchina sbagliata. Se il valore
+              finisce con la sola menzione, il resto lo scrivi tu. La spunta
+              decide se la riga esce nella caption: toglierla la fa sparire
+              davvero, senza far ricomparire il valore di default. I
               valori restano memorizzati su questo dispositivo e si ripresentano
               già compilati la prossima volta, spunta compresa. Scrivendo
               compaiono i valori già usati e i marchi che tagghi più spesso:
