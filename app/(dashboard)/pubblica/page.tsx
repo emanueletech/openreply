@@ -37,6 +37,13 @@ const ETICHETTE: Record<(typeof RICORDATI)[number], string> = {
   extra: "Riga libera",
 };
 
+/** Le parole chiave di un job, come sono state scritte nel campo. */
+const parolePubblicate = (valore: string) =>
+  valore
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean);
+
 const INPUT =
   "w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-foreground placeholder:text-zinc-500 focus:border-accent/40 focus:outline-none";
 
@@ -444,13 +451,19 @@ export default function PubblicaPage() {
               name="keyword"
               required
               disabled={!campagna}
-              placeholder="Spin"
+              placeholder="Spin, STL"
               className={`${INPUT} disabled:opacity-40`}
             />
           </div>
         </div>
 
-        {!campagna && (
+        {campagna ? (
+          <p className="text-xs text-muted">
+            Più parole separate dalla virgola: la caption ne annuncia una, la
+            prima, ma il DM parte con qualunque di esse — serve a chi scrive
+            «stl» invece della parola annunciata.
+          </p>
+        ) : (
           <p className="text-xs text-muted">
             Senza spunta il video esce e basta: nessuna campagna commento→DM, e
             la caption non chiede un commento a cui non risponderebbe nessuno.
@@ -726,7 +739,9 @@ export default function PubblicaPage() {
             <p className="text-muted">
               {job.campagna === false
                 ? "Pubblicato senza campagna: i commenti sotto questo post non fanno partire nessun DM."
-                : `Commenta «${job.keyword}» sotto il post per provare la campagna.`}
+                : parolePubblicate(job.keyword).length > 1
+                  ? `Commenta «${parolePubblicate(job.keyword)[0]}» sotto il post per provare la campagna. Rispondono anche: ${parolePubblicate(job.keyword).slice(1).join(", ")}.`
+                  : `Commenta «${job.keyword}» sotto il post per provare la campagna.`}
             </p>
           )}
 
