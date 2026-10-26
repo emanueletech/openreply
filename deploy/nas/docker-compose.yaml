@@ -74,7 +74,7 @@ services:
     # Cloudflare ha chiesto almeno la 2026.10.2 (certificati eMudhra compromessi,
     # le versioni prima si fidano ancora di loro): per aggiornare si cambia il
     # tag qui e si ricrea il container, riavviarlo non basta.
-    image: cloudflare/cloudflared:2026.10.3
+    image: cloudflare/cloudflared:2026.10.4
     container_name: openreply-cloudflared
     restart: unless-stopped
     environment:
