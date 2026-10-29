@@ -9,12 +9,13 @@ import {
 /**
  * What Meta's error subclasses keep from the error body.
  *
- * Seen in production: a private reply refused with code=100 sub=2534025 was
- * retried three times, because PermissionError threw the subcode away and the
- * worker's "this will fail the same way again" check reads exactly that field.
+ * The subcode used to be dropped and the code replaced by the one the class is
+ * named after, so a rejection that will always be refused (sub=2534025, "not
+ * eligible for a private reply") looked the same as a transient one, and a
+ * code 10 or 200 reached `isTemplateRejection` as a 100.
  */
 describe("Meta API error classes", () => {
-  it("keeps the subcode the worker decides on", () => {
+  it("keeps the subcode Meta sent", () => {
     expect(new PermissionError("m", "trace", 2534025).subcode).toBe(2534025);
     expect(new RateLimitError("m", "trace", 2207051).subcode).toBe(2207051);
     expect(new TokenExpiredError("m", "trace", 458).subcode).toBe(458);
@@ -32,7 +33,7 @@ describe("Meta API error classes", () => {
     expect(new PermissionError("m").subcode).toBeUndefined();
   });
 
-  it("stays a MetaApiError, which is how the worker narrows it", () => {
+  it("stays a MetaApiError, which is how callers narrow it", () => {
     expect(new PermissionError("m", "t", 2534025)).toBeInstanceOf(MetaApiError);
   });
 });
