@@ -27,6 +27,7 @@ const {
     dmLog: {
       findUnique: vi.fn(),
       findFirst: vi.fn(),
+      findMany: vi.fn(),
       upsert: vi.fn(),
       update: vi.fn(),
       updateMany: vi.fn(),
@@ -237,6 +238,7 @@ beforeEach(() => {
   mockPrisma.automation.findMany.mockResolvedValue([mockAutomation]);
   mockPrisma.automation.findFirst.mockResolvedValue(null);
   mockPrisma.dmLog.findUnique.mockResolvedValue(null);
+  mockPrisma.dmLog.findMany.mockReset().mockResolvedValue([]);
   mockPrisma.dmLog.create.mockResolvedValue({});
   // Two different lookups share findFirst: the cross-campaign private-reply
   // check (keyed on status SENT) and the postback's name lookup. Only the
@@ -1468,6 +1470,116 @@ describe("durable Zernio postback delivery", () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe("DM Worker — typed reply to an opening DM", () => {
+  const openingLog = {
+    commentId: "comment_555",
+    matchedKeyword: "LINK",
+    automation: { id: "auto_789", requireFollow: true },
+  };
+
+  function createReplyJob(messageText: string) {
+    return {
+      name: "process-message",
+      data: {
+        instagramAccountId: "ig_456",
+        messageId: "mid_reply",
+        messageText,
+        senderId: "commenter_999",
+      },
+      id: "message_job_reply",
+      attemptsMade: 0,
+    };
+  }
+
+  it("replays the opening DM's button when the user writes back instead of tapping", async () => {
+    mockPrisma.dmLog.findMany.mockResolvedValue([openingLog]);
+    mockPrisma.automation.findMany.mockResolvedValue([]);
+
+    // Ten words: longer than any DM trigger, still an answer to the opening DM.
+    await getProcessor()(
+      createReplyJob("non mi è arrivato niente, comunque fa lo stesso dai")
+    );
+
+    expect(mockQueueAdd).toHaveBeenCalledWith(
+      "process-postback",
+      expect.objectContaining({
+        userId: "commenter_999",
+        payload: "followcheck:auto_789:open",
+        mid: "mid_reply",
+        textReply: true,
+      }),
+      expect.objectContaining({ jobId: expect.stringContaining("text_reply_auto_789_commenter_999_") })
+    );
+  });
+
+  it("leaves alone a user whose link already went out", async () => {
+    mockPrisma.dmLog.findMany.mockResolvedValue([openingLog]);
+    mockPrisma.dmLog.findUnique.mockResolvedValue({ status: "SENT" });
+
+    await getProcessor()(createReplyJob("thanks!"));
+
+    expect(mockQueueAdd).not.toHaveBeenCalled();
+  });
+
+  it("keeps a DM trigger of the same campaign from sending a second link", async () => {
+    mockPrisma.dmLog.findMany.mockResolvedValue([openingLog]);
+
+    await getProcessor()(createReplyJob("LINK"));
+
+    expect(mockPrisma.automation.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: { notIn: ["auto_789"] } }),
+      })
+    );
+  });
+
+  it("delivers the link to a follower through the replayed tap", async () => {
+    mockPrisma.automation.findFirst.mockResolvedValue({
+      ...mockAutomation,
+      requireFollow: true,
+      openingDmEnabled: true,
+    });
+    mockGetUserFollowStatus.mockResolvedValue(true);
+
+    await getProcessor()(
+      createMockPostbackJob({
+        instagramAccountId: "ig_456",
+        userId: "commenter_999",
+        payload: "followcheck:auto_789:open",
+        mid: "mid_reply",
+        textReply: true,
+      })
+    );
+
+    expect(mockSendDirectMessage).toHaveBeenCalledWith(
+      "decrypted_token",
+      "ig_456",
+      "commenter_999",
+      "Hey commenter_user! Here is the link: https://example.com"
+    );
+  });
+
+  it("does not re-send the link on a replayed tap once it was delivered", async () => {
+    mockPrisma.automation.findFirst.mockResolvedValue({
+      ...mockAutomation,
+      requireFollow: true,
+    });
+    mockPrisma.dmLog.findUnique.mockResolvedValue({ status: "SENT" });
+
+    await getProcessor()(
+      createMockPostbackJob({
+        instagramAccountId: "ig_456",
+        userId: "commenter_999",
+        payload: "followcheck:auto_789:open",
+        textReply: true,
+      })
+    );
+
+    expect(mockSendDirectMessage).not.toHaveBeenCalled();
+    expect(mockSendDirectMessageWithButton).not.toHaveBeenCalled();
   });
 });
 

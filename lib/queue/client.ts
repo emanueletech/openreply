@@ -47,6 +47,9 @@ export interface ProcessPostbackJob {
   payload: string;
   mid?: string;
   fallback?: boolean;
+  // Queued because the user typed a reply to an opening DM instead of tapping
+  // its button. Handled like that tap, but only while no link has gone out.
+  textReply?: boolean;
   // Set on the delayed second pass of a follow-gate check. Instagram does not
   // report a brand-new follow immediately, so the first `false` is re-checked
   // later instead of rejecting the tap outright.

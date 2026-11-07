@@ -934,6 +934,99 @@ async function sendFollowRecheckAck({
   }
 }
 
+// How far back a typed reply still counts as an answer to an opening DM.
+const OPENING_DM_TEXT_REPLY_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Someone who got an opening DM and writes back instead of tapping its button.
+ *
+ * Without this the conversation dead-ends: the link only goes out on a tap, the
+ * read fallback needs a confirmed follow that Instagram withholds until the
+ * person has interacted (and by then it has already run), and the typed reply
+ * matched no DM trigger — so it was silently dropped. Observed in production:
+ * a follower wrote "nothing arrived" and got nothing back.
+ *
+ * Their message opened the messaging window and granted the consent the follow
+ * check needs, so the opening DM's button is replayed on their behalf: a
+ * follower gets the link, a non-follower gets the follow prompt. The postback
+ * job skips it if the link already went out, and the job id lets each opening
+ * DM answer one typed reply, so a chatty follower is not prompted every message.
+ *
+ * Returns the ids of the campaigns handled here.
+ */
+async function enqueueOpeningDmTextReplies(
+  data: ProcessMessageJob
+): Promise<Set<string>> {
+  const { instagramAccountId, messageId, senderId } = data;
+  const openingLogs = await prisma.dmLog.findMany({
+    where: {
+      ...connectionScope(data),
+      commenterId: senderId,
+      status: "SENT",
+      dmSentAt: { gte: new Date(Date.now() - OPENING_DM_TEXT_REPLY_MAX_AGE_MS) },
+      // Comment rows only: reveals and DM-trigger replies share the table.
+      NOT: [
+        { commentId: { startsWith: "reveal:" } },
+        { commentId: { startsWith: "dm:" } },
+      ],
+      automation: {
+        isActive: true,
+        openingDmEnabled: true,
+        instagramAccount: { instagramId: instagramAccountId },
+      },
+    },
+    select: {
+      commentId: true,
+      matchedKeyword: true,
+      automation: { select: { id: true, requireFollow: true } },
+    },
+    orderBy: { dmSentAt: "desc" },
+  });
+
+  const handled = new Set<string>();
+  for (const log of openingLogs) {
+    const automation = log.automation;
+    if (handled.has(automation.id)) continue;
+
+    // Link already delivered: nothing to recover, and a keyword DM for this
+    // campaign stays free to ask for it again.
+    const reveal = await prisma.dmLog.findUnique({
+      where: {
+        automationId_commentId: {
+          automationId: automation.id,
+          commentId: `reveal:${senderId}`,
+        },
+      },
+      select: { status: true, dmDeliveryUnconfirmed: true },
+    });
+    if (reveal?.status === "SENT" || reveal?.dmDeliveryUnconfirmed) continue;
+    handled.add(automation.id);
+
+    // The same payload the opening DM's button carries.
+    const payload = withLanguage(
+      `${automation.requireFollow ? "followcheck" : "reveal"}:${automation.id}:open`,
+      languageForKeyword(log.matchedKeyword)
+    );
+    await getDMQueue().add(
+      POSTBACK_JOB_NAME,
+      {
+        instagramAccountId,
+        accountConnectionId: data.accountConnectionId,
+        userId: senderId,
+        payload,
+        mid: messageId,
+        textReply: true,
+      },
+      {
+        jobId: `text_reply_${automation.id}_${senderId}_${Buffer.from(
+          log.commentId
+        ).toString("base64url")}`,
+      }
+    );
+  }
+  return handled;
+}
+
 /**
  * Deliver the reveal message after a user taps an opening DM's button.
  * The postback payload is `reveal:<automationId>` (or `reveal:<automationId>:<lang>`
@@ -941,7 +1034,7 @@ async function sendFollowRecheckAck({
  * IGSID (same id as their comment author id), which we DM directly.
  */
 async function processPostback(job: Job<ProcessPostbackJob>): Promise<void> {
-  const { instagramAccountId, userId, payload, fallback } = job.data;
+  const { instagramAccountId, userId, payload, fallback, textReply } = job.data;
 
   const isFollowCheck = payload.startsWith("followcheck:");
   if (!isFollowCheck && !payload.startsWith("reveal:")) return;
@@ -980,7 +1073,9 @@ async function processPostback(job: Job<ProcessPostbackJob>): Promise<void> {
   // instead of only firing once per person.
   const dedupeId = `reveal:${userId}`;
 
-  if (fallback) {
+  // A tap is a request and re-sends the link; a read or a typed reply is not,
+  // so those two only fill in a link that never went out.
+  if (fallback || textReply) {
     const existingReveal = await prisma.dmLog.findUnique({
       where: {
         automationId_commentId: {
@@ -1341,6 +1436,10 @@ async function processFollowUp(job: Job<ProcessFollowUpJob>): Promise<void> {
 async function processMessage(job: Job<ProcessMessageJob>): Promise<void> {
   const { instagramAccountId, messageId, messageText, senderId } = job.data;
 
+  // Before the length guard: a reply to an opening DM is often a sentence
+  // ("nothing arrived"), and it deserves the link whatever its length.
+  const answeredByTextReply = await enqueueOpeningDmTextReplies(job.data);
+
   // A long message is a conversation, not a request: see DM_TRIGGER_MAX_WORDS.
   if (!isShortEnoughForDmTrigger(messageText)) return;
 
@@ -1350,6 +1449,11 @@ async function processMessage(job: Job<ProcessMessageJob>): Promise<void> {
       dmTriggerEnabled: true,
       isActive: true,
       instagramAccount: { instagramId: instagramAccountId },
+      // Already on its way through the opening DM's own path: two routes would
+      // mean two copies of the link.
+      ...(answeredByTextReply.size
+        ? { id: { notIn: [...answeredByTextReply] } }
+        : {}),
     },
     include: {
       instagramAccount: true,
