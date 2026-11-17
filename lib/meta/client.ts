@@ -20,12 +20,13 @@ export class MetaApiError extends Error {
   }
 }
 
-// The subcode, and the real code, travel with these errors: Meta sends them in
-// every error body, and the subcode is the only thing that tells a routine
-// rejection ("this comment is not eligible for a private reply", 2534025) from
-// one worth retrying. Dropping it made every such rejection retry three times.
-// Both default to the previous fixed values, so an existing call site is
-// unaffected.
+// These subclasses carry the subcode and the code Meta actually sent. The
+// subcode is the only thing that separates a permanent rejection (a comment
+// not eligible for a private reply, sub=2534025) from one worth retrying, and
+// the fixed code made a 10 or a 200 arrive as a 100 — which is what
+// `isTemplateRejection` in the DM worker tests for before it tries another
+// send. Both arguments default to the previous values, so existing call sites
+// are unaffected.
 export class TokenExpiredError extends MetaApiError {
   constructor(message: string, fbTraceId?: string, subcode?: number) {
     super(190, subcode, fbTraceId, message);
@@ -293,6 +294,37 @@ export async function getUserFollowStatus(
     const data = await response.json();
     return typeof data?.is_user_follow_business === "boolean"
       ? data.is_user_follow_business
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The handle behind an IGSID, for personalizing a message to someone who
+ * messaged the account. The messages and postbacks webhooks carry only the
+ * sender's id, unlike the comments webhook, which carries the username.
+ *
+ * Instagram answers this for anyone who has an open conversation with the
+ * account, which is exactly who arrives on those two paths. null when the
+ * handle cannot be read, so the caller falls back as before.
+ */
+export async function getUserUsername(
+  accessToken: string,
+  recipientId: string
+): Promise<string | null> {
+  const url = new URL(`${instagramGraphBase()}/${recipientId}`);
+  url.searchParams.set("fields", "username");
+
+  try {
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return typeof data?.username === "string" && data.username
+      ? data.username
       : null;
   } catch {
     return null;

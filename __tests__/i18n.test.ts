@@ -7,7 +7,7 @@ import zhTW from "../lib/i18n/zh-TW.json";
 describe("interface translations", () => {
   // Italian, not English: see DEFAULT_LOCALE.
   it("keeps the default language for absent or unsupported preferences", () => {
-    for (const value of [undefined, null, "", "fr", "zh-CN", "../zh-TW", "pt", "pt-PT"]) {
+    for (const value of [undefined, null, "", "fr", "zh-CN", "../zh-TW", "pt", "pt-PT", "ru", "ru-RU"]) {
       expect(resolveLocale(value)).toBe(DEFAULT_LOCALE);
     }
     expect(resolveLocale("en")).toBe("en");
