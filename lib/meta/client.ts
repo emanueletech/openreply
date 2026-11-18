@@ -471,6 +471,23 @@ export async function sendCommentReply(
   return handleResponse(response);
 }
 
+/** Hides a comment on the account's own media: only its author still sees it. */
+export async function hideComment(
+  accessToken: string,
+  commentId: string
+): Promise<{ success: boolean }> {
+  const response = await fetch(`${instagramGraphBase()}/${commentId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ hide: true }),
+  });
+
+  return handleResponse(response);
+}
+
 export async function getMediaComments(
   accessToken: string,
   mediaId: string
